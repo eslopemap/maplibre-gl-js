@@ -3,6 +3,9 @@ import {ErrorEvent} from '../util/evented';
 
 import type {Evented} from '../util/evented';
 
+// Import slope spec patch to ensure validation accepts slope layer type
+import './slope_spec_patch';
+
 type ValidationError = {
     message: string;
     line: number;
@@ -25,7 +28,7 @@ type ValidateStyle = {
     (b: any, a?: any | null): ReadonlyArray<ValidationError>;
 };
 
-export const validateStyle = (validateStyleMin as unknown as ValidateStyle);
+export const validateStyle = validateStyleMin as unknown as ValidateStyle;
 
 export const validateSource = validateStyle.source;
 export const validateLight = validateStyle.light;

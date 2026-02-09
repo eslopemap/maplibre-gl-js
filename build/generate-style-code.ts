@@ -1,8 +1,14 @@
 'use strict';
 
 import * as fs from 'fs';
+import * as path from 'path';
+import {fileURLToPath} from 'url';
 
-import {v8} from '@maplibre/maplibre-gl-style-spec';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Use local v8.json to support slope layer type
+const v8 = JSON.parse(fs.readFileSync(path.join(__dirname, '../maplibre-style-spec/src/reference/v8.json'), 'utf8'));
 
 function camelCase(str: string): string {
     return str.replace(/-(.)/g, (_, x) => {
