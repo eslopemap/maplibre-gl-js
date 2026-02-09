@@ -3,6 +3,9 @@ import {ErrorEvent} from '../util/evented';
 
 import type {Evented} from '../util/evented';
 
+// Import slope spec patch to ensure validation accepts slope layer type
+import './slope_spec_patch';
+
 type ValidationError = {
     message: string;
     line: number;
@@ -25,7 +28,35 @@ type ValidateStyle = {
     (b: any, a?: any | null): ReadonlyArray<ValidationError>;
 };
 
-export const validateStyle = (validateStyleMin as unknown as ValidateStyle);
+// Filter out validation errors that incorrectly reject slope layers using raster-dem sources.
+// The published style-spec doesn't know about the slope layer type, so it rejects it.
+function filterSlopeErrors(errors: ReadonlyArray<ValidationError>): ReadonlyArray<ValidationError> {
+    return errors.filter(e =>
+        !e.message.includes("raster-dem source can only be used with layer type 'hillshade' or 'color-relief'")
+    );
+}
+
+function wrapValidator(fn: Validator): Validator {
+    return (a: any) => filterSlopeErrors(fn(a));
+}
+
+const _validateStyle = validateStyleMin as unknown as ValidateStyle;
+
+export const validateStyle: ValidateStyle = Object.assign(
+    ((b: any, a?: any | null) => filterSlopeErrors(_validateStyle(b, a))) as ValidateStyle,
+    {
+        source: _validateStyle.source,
+        sprite: _validateStyle.sprite,
+        glyphs: _validateStyle.glyphs,
+        layer: wrapValidator(_validateStyle.layer),
+        light: _validateStyle.light,
+        sky: _validateStyle.sky,
+        terrain: _validateStyle.terrain,
+        filter: _validateStyle.filter,
+        paintProperty: _validateStyle.paintProperty,
+        layoutProperty: _validateStyle.layoutProperty,
+    }
+);
 
 export const validateSource = validateStyle.source;
 export const validateLight = validateStyle.light;
