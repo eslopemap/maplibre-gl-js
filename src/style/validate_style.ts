@@ -3,9 +3,6 @@ import {ErrorEvent} from '../util/evented';
 
 import type {Evented} from '../util/evented';
 
-// Import slope spec patch to ensure validation accepts slope layer type
-import './slope_spec_patch';
-
 type ValidationError = {
     message: string;
     line: number;

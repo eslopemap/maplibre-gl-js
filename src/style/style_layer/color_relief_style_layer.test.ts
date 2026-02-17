@@ -1,5 +1,5 @@
 import {describe, test, expect, vi} from 'vitest';
-import {ColorReliefStyleLayer} from './color_relief_style_layer';
+import {TerrainAnalysisStyleLayer} from './terrain_analysis_style_layer';
 import {Color, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {createStyleLayer} from '../create_style_layer';
 import {extend} from '../../util/util';
@@ -13,17 +13,19 @@ function createColorReliefLayerSpec(properties?: {paint: {'color-relief-opacity'
     } as LayerSpecification, properties);
 }
 
-describe('ColorReliefStyleLayer', () => {
+describe('ColorReliefStyleLayer (backward compat via TerrainAnalysisStyleLayer)', () => {
 
     test('default', () => {
         const layerSpec = createColorReliefLayerSpec();
         const layer = createStyleLayer(layerSpec, {});
-        expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
-        const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
-        expect(colorReliefStyleLayer.paint.get('color-relief-opacity')).toEqual(1);
-        const colorRamp = colorReliefStyleLayer._createColorRamp(256);
-        expect(colorRamp.elevationStops).toEqual([0,1]);
-        expect(colorRamp.colorStops).toEqual([Color.transparent,Color.transparent]);
+        expect(layer).toBeInstanceOf(TerrainAnalysisStyleLayer);
+        const taLayer = layer as TerrainAnalysisStyleLayer;
+        expect(taLayer.type).toBe('color-relief');
+        expect(taLayer.getAttributeType()).toBe('elevation');
+        expect(taLayer.getOpacity()).toEqual(1);
+        const ramp = taLayer._createScalarRamp(256);
+        expect(ramp.scalarStops).toEqual([0, 1]);
+        expect(ramp.colorStops).toEqual([Color.transparent, Color.transparent]);
     });
 
     test('parameters specified', () => {
@@ -40,14 +42,14 @@ describe('ColorReliefStyleLayer', () => {
             }
         });
         const layer = createStyleLayer(layerSpec, {});
-        expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
-        const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
-        const colorRamp = colorReliefStyleLayer._createColorRamp(256);
-        expect(colorRamp.elevationStops).toEqual([0,1000]);
-        expect(colorRamp.colorStops).toEqual([Color.black,Color.white]);
+        expect(layer).toBeInstanceOf(TerrainAnalysisStyleLayer);
+        const taLayer = layer as TerrainAnalysisStyleLayer;
+        const ramp = taLayer._createScalarRamp(256);
+        expect(ramp.scalarStops).toEqual([0, 1000]);
+        expect(ramp.colorStops).toEqual([Color.black, Color.white]);
 
-        colorReliefStyleLayer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
-        expect(colorReliefStyleLayer.paint.get('color-relief-opacity')).toEqual(0.5);
+        taLayer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        expect(taLayer.getOpacity()).toEqual(0.5);
     });
 
     test('single color', () => {
@@ -62,14 +64,14 @@ describe('ColorReliefStyleLayer', () => {
             }
         });
         const layer = createStyleLayer(layerSpec, {});
-        expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
-        const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
-        const colorRamp = colorReliefStyleLayer._createColorRamp(256);
-        expect(colorRamp.elevationStops).toEqual([0,1]);
-        expect(colorRamp.colorStops).toEqual([Color.red,Color.red]);
+        expect(layer).toBeInstanceOf(TerrainAnalysisStyleLayer);
+        const taLayer = layer as TerrainAnalysisStyleLayer;
+        const ramp = taLayer._createScalarRamp(256);
+        expect(ramp.scalarStops).toEqual([0, 1]);
+        expect(ramp.colorStops).toEqual([Color.red, Color.red]);
     });
 
-    test('getColorRamp: no remapping', () => {
+    test('getScalarRamp: no remapping', () => {
         const layerSpec = createColorReliefLayerSpec({
             paint: {
                 'color-relief-color': [
@@ -84,16 +86,16 @@ describe('ColorReliefStyleLayer', () => {
             }
         });
         const layer = createStyleLayer(layerSpec, {});
-        expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
-        const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
+        expect(layer).toBeInstanceOf(TerrainAnalysisStyleLayer);
+        const taLayer = layer as TerrainAnalysisStyleLayer;
 
-        const colorRamp = colorReliefStyleLayer._createColorRamp(4);
+        const ramp = taLayer._createScalarRamp(4);
 
-        expect(colorRamp.elevationStops).toEqual([0, 1000, 2000, 3000]);
-        expect(colorRamp.colorStops).toEqual([Color.black, Color.red, Color.red, Color.white]);
+        expect(ramp.scalarStops).toEqual([0, 1000, 2000, 3000]);
+        expect(ramp.colorStops).toEqual([Color.black, Color.red, Color.red, Color.white]);
     });
 
-    test('getColorRamp: with remapping', () => {
+    test('getScalarRamp: with remapping', () => {
         const layerSpec = createColorReliefLayerSpec({
             paint: {
                 'color-relief-color': [
@@ -109,15 +111,15 @@ describe('ColorReliefStyleLayer', () => {
             }
         });
         const layer = createStyleLayer(layerSpec, {});
-        expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
-        const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
+        expect(layer).toBeInstanceOf(TerrainAnalysisStyleLayer);
+        const taLayer = layer as TerrainAnalysisStyleLayer;
         const originalWarn = console.warn;
         console.warn = vi.fn();
 
-        const colorRamp = colorReliefStyleLayer._createColorRamp(4);
+        const ramp = taLayer._createScalarRamp(4);
 
-        expect(colorRamp.elevationStops).toEqual([0, 1000, 3000, 4000]);
-        expect(colorRamp.colorStops).toEqual([Color.black, Color.red, Color.black, Color.red]);
+        expect(ramp.scalarStops).toEqual([0, 1000, 3000, 4000]);
+        expect(ramp.colorStops).toEqual([Color.black, Color.red, Color.black, Color.red]);
         expect(console.warn).toHaveBeenCalled();
         console.warn = originalWarn;
     });

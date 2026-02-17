@@ -4,15 +4,15 @@ import {DepthMode} from '../gl/depth_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {type ColorMode} from '../gl/color_mode';
 import {
-    slopeUniformValues
-} from './program/slope_program';
+    terrainAnalysisUniformValues
+} from './program/terrain_analysis_program';
 
 import type {Painter, RenderOptions} from './painter';
 import type {TileManager} from '../tile/tile_manager';
-import type {SlopeStyleLayer} from '../style/style_layer/slope_style_layer';
+import type {TerrainAnalysisStyleLayer} from '../style/style_layer/terrain_analysis_style_layer';
 import type {OverscaledTileID} from '../tile/tile_id';
 
-export function drawSlope(painter: Painter, tileManager: TileManager, layer: SlopeStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+export function drawTerrainAnalysis(painter: Painter, tileManager: TileManager, layer: TerrainAnalysisStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (painter.renderPass !== 'translucent') return;
     if (!tileIDs.length) return;
 
@@ -25,18 +25,18 @@ export function drawSlope(painter: Painter, tileManager: TileManager, layer: Slo
 
     if (useSubdivision) {
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-        renderSlope(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture);
-        renderSlope(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture);
     } else {
         const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-        renderSlope(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
     }
 }
 
-function renderSlope(
+function renderTerrainAnalysis(
     painter: Painter,
     tileManager: TileManager,
-    layer: SlopeStyleLayer,
+    layer: TerrainAnalysisStyleLayer,
     coords: Array<OverscaledTileID>,
     stencilModes: {[_: number]: Readonly<StencilMode>},
     depthMode: Readonly<DepthMode>,
@@ -48,7 +48,7 @@ function renderSlope(
     const context = painter.context;
     const transform = painter.transform;
     const gl = context.gl;
-    const program = painter.useProgram('slope');
+    const program = painter.useProgram('terrainAnalysis');
     const align = !painter.options.moving;
 
     let firstTile = true;
@@ -64,13 +64,13 @@ function renderSlope(
 
         if (firstTile) {
             const maxLength = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-            const {slopeTexture, colorTexture} = layer.getSlopeRampTextures(context, maxLength);
+            const {scalarTexture, colorTexture} = layer.getScalarRampTextures(context, maxLength, dem.getUnpackVector());
             context.activeTexture.set(gl.TEXTURE1);
-            slopeTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
+            scalarTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
             context.activeTexture.set(gl.TEXTURE4);
             colorTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
             firstTile = false;
-            colorRampSize = slopeTexture.size[0];
+            colorRampSize = scalarTexture.size[0];
         }
 
         const textureStride = dem.stride;
@@ -101,6 +101,6 @@ function renderSlope(
         });
 
         program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW,
-            slopeUniformValues(layer, tile.dem, colorRampSize, coord, coord.overscaledZ), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+            terrainAnalysisUniformValues(layer, tile.dem, colorRampSize, coord, coord.overscaledZ), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
     }
 }
