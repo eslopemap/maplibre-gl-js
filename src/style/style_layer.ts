@@ -81,13 +81,13 @@ export type QueryIntersectsFeatureParams = {
 /**
  * A base class for style layers
  */
-export type SlopeLayerSpecification = Omit<LayerSpecification, 'type'> & {type: 'slope'};
-export type LayerSpecificationWithSlope = LayerSpecification | SlopeLayerSpecification;
+export type TerrainAnalysisLayerSpecification = Omit<LayerSpecification, 'type'> & {type: 'terrain-analysis'};
+export type ExtendedLayerSpecification = LayerSpecification | TerrainAnalysisLayerSpecification;
 
 export abstract class StyleLayer extends Evented {
     id: string;
     metadata: unknown;
-    type: LayerSpecificationWithSlope['type'] | CustomLayerInterface['type'];
+    type: ExtendedLayerSpecification['type'] | CustomLayerInterface['type'];
     source: string;
     sourceLayer: string;
     minzoom: number;
@@ -118,7 +118,7 @@ export abstract class StyleLayer extends Evented {
 
     private _globalState: Record<string, any>; // reference to global state
 
-    constructor(layer: LayerSpecificationWithSlope | CustomLayerInterface, properties: Readonly<{
+    constructor(layer: ExtendedLayerSpecification | CustomLayerInterface, properties: Readonly<{
         layout?: Properties<any>;
         paint?: Properties<any>;
     }>, globalState: Record<string, any>) {

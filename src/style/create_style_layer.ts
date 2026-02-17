@@ -1,8 +1,7 @@
 import {CircleStyleLayer} from './style_layer/circle_style_layer';
 import {HeatmapStyleLayer} from './style_layer/heatmap_style_layer';
 import {HillshadeStyleLayer} from './style_layer/hillshade_style_layer';
-import {ColorReliefStyleLayer} from './style_layer/color_relief_style_layer';
-import {SlopeStyleLayer} from './style_layer/slope_style_layer';
+import {TerrainAnalysisStyleLayer, createTerrainAnalysisFromColorRelief} from './style_layer/terrain_analysis_style_layer';
 import {FillStyleLayer} from './style_layer/fill_style_layer';
 import {FillExtrusionStyleLayer} from './style_layer/fill_extrusion_style_layer';
 import {LineStyleLayer} from './style_layer/line_style_layer';
@@ -12,9 +11,9 @@ import {RasterStyleLayer} from './style_layer/raster_style_layer';
 import {CustomStyleLayer, type CustomLayerInterface} from './style_layer/custom_style_layer';
 
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
-import type {LayerSpecificationWithSlope} from './style_layer';
+import type {ExtendedLayerSpecification} from './style_layer';
 
-export function createStyleLayer(layer: LayerSpecificationWithSlope | CustomLayerInterface, globalState: Record<string, any>) {
+export function createStyleLayer(layer: ExtendedLayerSpecification | CustomLayerInterface, globalState: Record<string, any>) {
     if (layer.type === 'custom') {
         return new CustomStyleLayer(layer, globalState);
     }
@@ -24,7 +23,7 @@ export function createStyleLayer(layer: LayerSpecificationWithSlope | CustomLaye
         case 'circle':
             return new CircleStyleLayer(layer, globalState);
         case 'color-relief':
-            return new ColorReliefStyleLayer(layer, globalState);
+            return createTerrainAnalysisFromColorRelief(layer, globalState);
         case 'fill':
             return new FillStyleLayer(layer, globalState);
         case 'fill-extrusion':
@@ -33,8 +32,8 @@ export function createStyleLayer(layer: LayerSpecificationWithSlope | CustomLaye
             return new HeatmapStyleLayer(layer, globalState);
         case 'hillshade':
             return new HillshadeStyleLayer(layer, globalState);
-        case 'slope':
-            return new SlopeStyleLayer(layer, globalState);
+        case 'terrain-analysis':
+            return new TerrainAnalysisStyleLayer(layer as any, globalState);
         case 'line':
             return new LineStyleLayer(layer, globalState);
         case 'raster':
