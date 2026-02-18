@@ -12,6 +12,7 @@ uniform vec2 u_latrange;
 uniform vec2 u_dimension;
 uniform float u_zoom;
 uniform int u_attribute; // 0 = elevation, 1 = slope, 2 = aspect
+uniform int u_step_mode; // 0 = interpolate, 1 = step (discrete bands)
 
 in vec2 v_pos;
 
@@ -125,8 +126,15 @@ void main() {
         }
     }
 
-    float x = (float(l) + (scalar - scalar_l) / (scalar_r - scalar_l) + 0.5)/float(u_color_ramp_size);
-    fragColor = u_opacity*texture(u_color_stops, vec2(x, 0));
+    float x;
+    if (u_step_mode == 1) {
+        // Step mode: snap to the left stop's color (discrete bands)
+        x = (float(l) + 0.5) / float(u_color_ramp_size);
+    } else {
+        // Interpolate mode: blend between adjacent stops
+        x = (float(l) + (scalar - scalar_l) / (scalar_r - scalar_l) + 0.5) / float(u_color_ramp_size);
+    }
+    fragColor = u_opacity * texture(u_color_stops, vec2(x, 0));
 
 #ifdef OVERDRAW_INSPECTOR
     fragColor = vec4(1.0);
