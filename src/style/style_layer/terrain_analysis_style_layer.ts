@@ -4,7 +4,7 @@ import properties, {type TerrainAnalysisPaintPropsPossiblyEvaluated} from './ter
 import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
 
 import type {TerrainAnalysisPaintProps} from './terrain_analysis_style_layer_properties.g';
-import {Color, Interpolate, ZoomConstantExpression, type LayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
+import {Color, Interpolate, Step, ZoomConstantExpression, type LayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {warnOnce} from '../../util/util';
 import {Texture} from '../../render/texture';
 import {RGBAImage} from '../../util/image';
@@ -21,6 +21,7 @@ export type TerrainAnalysisAttribute = 'elevation' | 'slope' | 'aspect';
 export class TerrainAnalysisStyleLayer extends StyleLayer {
     colorRampExpression: StylePropertyExpression;
     scalarRampTextures: ScalarRampTextures;
+    isStepMode: boolean;
     _transitionablePaint: Transitionable<TerrainAnalysisPaintProps>;
     _transitioningPaint: Transitioning<TerrainAnalysisPaintProps>;
     paint: PossiblyEvaluated<TerrainAnalysisPaintProps, TerrainAnalysisPaintPropsPossiblyEvaluated>;
@@ -66,13 +67,26 @@ export class TerrainAnalysisStyleLayer extends StyleLayer {
         const expression = this._transitionablePaint._values[this._colorProperty].value.expression;
         const globalName = this._detectExpressionGlobal();
 
-        if (expression instanceof ZoomConstantExpression && expression._styleExpression.expression instanceof Interpolate) {
-            this.colorRampExpression = expression;
-            const interpolater = expression._styleExpression.expression;
-            scalarRamp.scalarStops = interpolater.labels;
-            scalarRamp.colorStops = [];
-            for (const label of scalarRamp.scalarStops) {
-                scalarRamp.colorStops.push(interpolater.evaluate({globals: {[globalName]: label}} as unknown as EvaluationContext));
+        if (expression instanceof ZoomConstantExpression) {
+            const inner = expression._styleExpression.expression;
+            if (inner instanceof Interpolate) {
+                this.colorRampExpression = expression;
+                this.isStepMode = false;
+                scalarRamp.scalarStops = inner.labels;
+                scalarRamp.colorStops = [];
+                for (const label of scalarRamp.scalarStops) {
+                    scalarRamp.colorStops.push(inner.evaluate({globals: {[globalName]: label}} as unknown as EvaluationContext));
+                }
+            } else if (inner instanceof Step) {
+                this.colorRampExpression = expression;
+                this.isStepMode = true;
+                // Step labels[0] is -Infinity (the default); replace with a sensible minimum
+                const minValue = globalName === 'elevation' ? -500 : 0;
+                scalarRamp.scalarStops = inner.labels.map((l, i) => i === 0 ? minValue : l);
+                scalarRamp.colorStops = [];
+                for (const label of scalarRamp.scalarStops) {
+                    scalarRamp.colorStops.push(inner.evaluate({globals: {[globalName]: label}} as unknown as EvaluationContext));
+                }
             }
         }
         if (scalarRamp.scalarStops.length < 1) {

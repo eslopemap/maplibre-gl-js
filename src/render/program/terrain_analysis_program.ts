@@ -23,6 +23,7 @@ export type TerrainAnalysisUniformsType = {
     'u_opacity': Uniform1f;
     'u_latrange': Uniform2f;
     'u_attribute': Uniform1i;
+    'u_step_mode': Uniform1i;
 };
 
 const terrainAnalysisUniforms = (context: Context, locations: UniformLocations): TerrainAnalysisUniformsType => ({
@@ -35,7 +36,8 @@ const terrainAnalysisUniforms = (context: Context, locations: UniformLocations):
     'u_color_ramp_size': new Uniform1i(context, locations.u_color_ramp_size),
     'u_opacity': new Uniform1f(context, locations.u_opacity),
     'u_latrange': new Uniform2f(context, locations.u_latrange),
-    'u_attribute': new Uniform1i(context, locations.u_attribute)
+    'u_attribute': new Uniform1i(context, locations.u_attribute),
+    'u_step_mode': new Uniform1i(context, locations.u_step_mode)
 });
 
 function getTileLatRange(tileID: OverscaledTileID): [number, number] {
@@ -73,7 +75,8 @@ const terrainAnalysisUniformValues = (
         'u_color_ramp_size': colorRampSize,
         'u_opacity': layer.getOpacity(),
         'u_latrange': getTileLatRange(tileID),
-        'u_attribute': attributeToInt(layer.getAttributeType())
+        'u_attribute': attributeToInt(layer.getAttributeType()),
+        'u_step_mode': layer.isStepMode ? 1 : 0
     };
 };
 
