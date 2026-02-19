@@ -4,7 +4,7 @@ import properties, {type TerrainAnalysisPaintPropsPossiblyEvaluated} from './ter
 import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
 
 import type {TerrainAnalysisPaintProps} from './terrain_analysis_style_layer_properties.g';
-import {Color, Interpolate, Step, ZoomConstantExpression, type LayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
+import {Color, Interpolate, Step, ZoomConstantExpression, type LayerSpecification, type ColorReliefLayerSpecification, type TerrainAnalysisLayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {warnOnce} from '../../util/util';
 import {Texture} from '../../render/texture';
 import {RGBAImage} from '../../util/image';
@@ -31,7 +31,7 @@ export class TerrainAnalysisStyleLayer extends StyleLayer {
     private _opacityProperty: string;
     private _colorProperty: string;
 
-    constructor(layer: LayerSpecification | any, globalState: Record<string, any>, attributeOverride?: TerrainAnalysisAttribute) {
+    constructor(layer: LayerSpecification, globalState: Record<string, any>, attributeOverride?: TerrainAnalysisAttribute) {
         super(layer, properties, globalState);
         this._attributeOverride = attributeOverride || null;
         this._opacityProperty = 'terrain-analysis-opacity';
@@ -160,24 +160,21 @@ export class TerrainAnalysisStyleLayer extends StyleLayer {
  * This provides backward compatibility: color-relief layers are internally
  * handled as terrain-analysis layers with attribute='elevation'.
  */
-export function createTerrainAnalysisFromColorRelief(layer: LayerSpecification, globalState: Record<string, any>): TerrainAnalysisStyleLayer {
+export function createTerrainAnalysisFromColorRelief(layer: ColorReliefLayerSpecification, globalState: Record<string, any>): TerrainAnalysisStyleLayer {
     // Translate color-relief paint properties to terrain-analysis equivalents
-    const translatedLayer = {
+    const srcPaint = layer.paint || {} as ColorReliefLayerSpecification['paint'];
+    const translatedLayer: TerrainAnalysisLayerSpecification = {
         ...layer,
-        type: 'terrain-analysis' as any,
-        paint: {} as Record<string, any>
+        type: 'terrain-analysis',
+        paint: {
+            ...(srcPaint['color-relief-opacity'] !== undefined && {'terrain-analysis-opacity': srcPaint['color-relief-opacity']}),
+            ...(srcPaint['color-relief-color'] !== undefined && {'terrain-analysis-color': srcPaint['color-relief-color']}),
+            'terrain-analysis-attribute': 'elevation'
+        }
     };
-    const srcPaint = (layer as any).paint || {};
-    if (srcPaint['color-relief-opacity'] !== undefined) {
-        translatedLayer.paint['terrain-analysis-opacity'] = srcPaint['color-relief-opacity'];
-    }
-    if (srcPaint['color-relief-color'] !== undefined) {
-        translatedLayer.paint['terrain-analysis-color'] = srcPaint['color-relief-color'];
-    }
-    translatedLayer.paint['terrain-analysis-attribute'] = 'elevation';
 
     const styleLayer = new TerrainAnalysisStyleLayer(translatedLayer, globalState, 'elevation');
     // Preserve the original type for serialization
-    styleLayer.type = 'color-relief' as any;
+    styleLayer.type = 'color-relief';
     return styleLayer;
 }
