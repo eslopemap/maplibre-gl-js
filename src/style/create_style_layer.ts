@@ -11,9 +11,8 @@ import {RasterStyleLayer} from './style_layer/raster_style_layer';
 import {CustomStyleLayer, type CustomLayerInterface} from './style_layer/custom_style_layer';
 
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
-import type {ExtendedLayerSpecification} from './style_layer';
 
-export function createStyleLayer(layer: ExtendedLayerSpecification | CustomLayerInterface, globalState: Record<string, any>) {
+export function createStyleLayer(layer: LayerSpecification | CustomLayerInterface, globalState: Record<string, any>) {
     if (layer.type === 'custom') {
         return new CustomStyleLayer(layer, globalState);
     }
@@ -33,7 +32,7 @@ export function createStyleLayer(layer: ExtendedLayerSpecification | CustomLayer
         case 'hillshade':
             return new HillshadeStyleLayer(layer, globalState);
         case 'terrain-analysis':
-            return new TerrainAnalysisStyleLayer(layer as any, globalState);
+            return new TerrainAnalysisStyleLayer(layer, globalState);
         case 'line':
             return new LineStyleLayer(layer, globalState);
         case 'raster':

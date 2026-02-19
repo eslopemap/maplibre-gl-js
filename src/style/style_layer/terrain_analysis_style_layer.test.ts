@@ -10,7 +10,7 @@ function createTerrainAnalysisLayerSpec(properties?: {paint: Record<string, any>
         type: 'terrain-analysis',
         id: 'terrainAnalysis',
         source: 'demSource'
-    } as unknown as LayerSpecification, properties);
+    } as LayerSpecification, properties);
 }
 
 describe('TerrainAnalysisStyleLayer', () => {
