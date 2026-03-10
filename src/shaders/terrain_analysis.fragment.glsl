@@ -70,9 +70,10 @@ vec2 computeNormalDeriv() {
     //             = pow(2, 28.2562 - zoom) / tileSize
     vec2 deriv = vec2(dzdx, dzdy) * tileSize / pow(2.0, 28.2562 - u_zoom);
 
-    // Account for Mercator projection latitude distortion on the x-axis
+    // Mercator is conformal: both axes have the same scale distortion at any latitude.
+    // Divide both derivatives by cos(lat) to convert from Mercator-pixel to ground units.
     float lat = (u_latrange[0] - u_latrange[1]) * (1.0 - v_pos.y) + u_latrange[1];
-    deriv.x = deriv.x / cos(radians(lat));
+    deriv /= cos(radians(lat));
 
     return deriv;
 }
