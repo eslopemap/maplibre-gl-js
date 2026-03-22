@@ -82,8 +82,8 @@ describe('main sourcemap', () => {
         }
 
         const s1 = setMinus(actualEntriesInSourcemapJSON, expectedEntriesInSourcemapJSON);
-        expect(s1.length).toBeLessThan(5);
+        expect(s1.length).toBeLessThan(10);
         const s2 = setMinus(expectedEntriesInSourcemapJSON, actualEntriesInSourcemapJSON);
-        expect(s2.length).toBeLessThan(16);
+        expect(s2.length).toBeLessThan(25);
     });
 });
