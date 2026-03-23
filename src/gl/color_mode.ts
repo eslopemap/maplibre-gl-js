@@ -34,5 +34,5 @@ ColorMode.Replace = [ONE, ZERO, ONE, ZERO];
 ColorMode.disabled = new ColorMode(ColorMode.Replace, Color.transparent, [false, false, false, false]);
 ColorMode.unblended = new ColorMode(ColorMode.Replace, Color.transparent, [true, true, true, true]);
 ColorMode.alphaBlended = new ColorMode([ONE, ONE_MINUS_SRC_ALPHA, ONE, ONE_MINUS_SRC_ALPHA], Color.transparent, [true, true, true, true]);
-ColorMode.multiply = new ColorMode([DST_COLOR, ZERO, SRC_ALPHA, ONE_MINUS_SRC_ALPHA], Color.transparent, [true, true, true, true]);
-ColorMode.screen = new ColorMode([ONE, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA], Color.transparent, [true, true, true, true]);
+ColorMode.multiply = new ColorMode([DST_COLOR, ZERO, ZERO, ONE], Color.transparent, [true, true, true, true]);
+ColorMode.screen = new ColorMode([ONE, ONE_MINUS_SRC_COLOR, ZERO, ONE], Color.transparent, [true, true, true, true]);
