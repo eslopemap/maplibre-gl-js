@@ -21,6 +21,8 @@ export type TerrainAnalysisUniformsType = {
     'u_color_stops': Uniform1i;
     'u_color_ramp_size': Uniform1i;
     'u_opacity': Uniform1f;
+    'u_is_premultiplied': Uniform1f;
+    'u_blend_neutral': Uniform1f;
     'u_latrange': Uniform2f;
     'u_attribute': Uniform1i;
     'u_step_mode': Uniform1i;
@@ -35,6 +37,8 @@ const terrainAnalysisUniforms = (context: Context, locations: UniformLocations):
     'u_color_stops': new Uniform1i(context, locations.u_color_stops),
     'u_color_ramp_size': new Uniform1i(context, locations.u_color_ramp_size),
     'u_opacity': new Uniform1f(context, locations.u_opacity),
+    'u_is_premultiplied': new Uniform1f(context, locations.u_is_premultiplied),
+    'u_blend_neutral': new Uniform1f(context, locations.u_blend_neutral),
     'u_latrange': new Uniform2f(context, locations.u_latrange),
     'u_attribute': new Uniform1i(context, locations.u_attribute),
     'u_step_mode': new Uniform1i(context, locations.u_step_mode)
@@ -62,6 +66,8 @@ const terrainAnalysisUniformValues = (
     layer: TerrainAnalysisStyleLayer,
     dem: DEMData,
     colorRampSize: number,
+    isPremultiplied: number,
+    blendNeutral: number,
     tileID: OverscaledTileID,
     zoom: number
 ): UniformValues<TerrainAnalysisUniformsType> => {
@@ -74,6 +80,8 @@ const terrainAnalysisUniformValues = (
         'u_color_stops': 4,
         'u_color_ramp_size': colorRampSize,
         'u_opacity': layer.getOpacity(),
+        'u_is_premultiplied': isPremultiplied,
+        'u_blend_neutral': blendNeutral,
         'u_latrange': getTileLatRange(tileID),
         'u_attribute': attributeToInt(layer.getAttributeType()),
         'u_step_mode': layer.isStepMode ? 1 : 0

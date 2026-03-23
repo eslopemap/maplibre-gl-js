@@ -13,6 +13,8 @@ uniform vec2 u_dimension;
 uniform float u_zoom;
 uniform int u_attribute; // 0 = elevation, 1 = slope, 2 = aspect
 uniform int u_step_mode; // 0 = interpolate, 1 = step (discrete bands)
+uniform float u_is_premultiplied;
+uniform float u_blend_neutral;
 
 in vec2 v_pos;
 
@@ -135,7 +137,12 @@ void main() {
         // Interpolate mode: blend between adjacent stops
         x = (float(l) + (scalar - scalar_l) / (scalar_r - scalar_l) + 0.5) / float(u_color_ramp_size);
     }
-    fragColor = u_opacity * texture(u_color_stops, vec2(x, 0));
+    vec4 rampColor = u_opacity * texture(u_color_stops, vec2(x, 0));
+    if (u_is_premultiplied > 0.5) {
+        fragColor = vec4(rampColor.rgb * rampColor.a, rampColor.a);
+    } else {
+        fragColor = vec4(mix(vec3(u_blend_neutral), rampColor.rgb, rampColor.a), rampColor.a);
+    }
 
 #ifdef OVERDRAW_INSPECTOR
     fragColor = vec4(1.0);

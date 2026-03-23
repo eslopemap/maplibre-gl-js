@@ -2,7 +2,7 @@ import {Texture} from './texture';
 import type {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
-import {type ColorMode} from '../gl/color_mode';
+import {ColorMode} from '../gl/color_mode';
 import {
     terrainAnalysisUniformValues
 } from './program/terrain_analysis_program';
@@ -21,15 +21,15 @@ export function drawTerrainAnalysis(painter: Painter, tileManager: TileManager, 
     const useSubdivision = projection.useSubdivision;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-    const colorMode = painter.colorModeForRenderPass();
+    const blendModeState = getBlendModeState(painter, layer);
 
     if (useSubdivision) {
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture);
-        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorderless, depthMode, blendModeState, false, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencilBorders, depthMode, blendModeState, true, isRenderingToTexture);
     } else {
         const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-        renderTerrainAnalysis(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
+        renderTerrainAnalysis(painter, tileManager, layer, coords, stencil, depthMode, blendModeState, false, isRenderingToTexture);
     }
 }
 
@@ -40,7 +40,7 @@ function renderTerrainAnalysis(
     coords: Array<OverscaledTileID>,
     stencilModes: {[_: number]: Readonly<StencilMode>},
     depthMode: Readonly<DepthMode>,
-    colorMode: Readonly<ColorMode>,
+    blendModeState: BlendModeState,
     useBorder: boolean,
     isRenderingToTexture: boolean
 ) {
@@ -100,7 +100,39 @@ function renderTerrainAnalysis(
             applyTerrainMatrix: true
         });
 
-        program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW,
-            terrainAnalysisUniformValues(layer, tile.dem, colorRampSize, coord, coord.overscaledZ), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+        program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], blendModeState.colorMode, CullFaceMode.backCCW,
+            terrainAnalysisUniformValues(layer, tile.dem, colorRampSize, blendModeState.isPremultiplied, blendModeState.blendNeutral, coord, coord.overscaledZ), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
     }
+}
+
+type BlendModeState = {
+    colorMode: Readonly<ColorMode>;
+    isPremultiplied: number;
+    blendNeutral: number;
+};
+
+function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer): BlendModeState {
+    const blendMode = layer.paint.get('blend-mode');
+
+    if (blendMode === 'multiply') {
+        return {
+            colorMode: ColorMode.multiply,
+            isPremultiplied: 0,
+            blendNeutral: 1
+        };
+    }
+
+    if (blendMode === 'screen') {
+        return {
+            colorMode: ColorMode.screen,
+            isPremultiplied: 0,
+            blendNeutral: 0
+        };
+    }
+
+    return {
+        colorMode: painter.colorModeForRenderPass(),
+        isPremultiplied: 1,
+        blendNeutral: 0
+    };
 }

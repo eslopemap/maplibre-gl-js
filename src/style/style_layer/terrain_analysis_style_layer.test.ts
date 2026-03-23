@@ -158,4 +158,42 @@ describe('TerrainAnalysisStyleLayer', () => {
             expect(ramp.scalarStops.length).toBe(4);
         });
     });
+
+    describe('blend-mode paint property', () => {
+        test('defaults to normal when not specified', () => {
+            const layer = createStyleLayer(createTerrainAnalysisLayerSpec(), {});
+            expect(layer.getPaintProperty('blend-mode')).toEqual(undefined);
+        });
+
+        test('accepts multiply and screen', () => {
+            const multiplyLayer = createStyleLayer(createTerrainAnalysisLayerSpec({
+                paint: {'blend-mode': 'multiply'}
+            }), {});
+            const screenLayer = createStyleLayer(createTerrainAnalysisLayerSpec({
+                paint: {'blend-mode': 'screen'}
+            }), {});
+
+            expect(multiplyLayer.getPaintProperty('blend-mode')).toEqual('multiply');
+            expect(screenLayer.getPaintProperty('blend-mode')).toEqual('screen');
+        });
+
+        test('can be set alongside other terrain-analysis paint properties', () => {
+            const layer = createStyleLayer(createTerrainAnalysisLayerSpec({
+                paint: {
+                    'terrain-analysis-attribute': 'slope',
+                    'terrain-analysis-opacity': 0.8,
+                    'blend-mode': 'multiply',
+                    'terrain-analysis-color': [
+                        'interpolate', ['linear'], ['slope'],
+                        0, 'green', 45, 'red'
+                    ]
+                }
+            }), {}) as TerrainAnalysisStyleLayer;
+
+            expect(layer.getPaintProperty('blend-mode')).toEqual('multiply');
+            layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+            expect(layer.paint.get('blend-mode')).toEqual('multiply');
+            expect(layer.paint.get('terrain-analysis-opacity')).toEqual(0.8);
+        });
+    });
 });
