@@ -4,6 +4,7 @@ import {ImageSource} from '../source/image_source';
 import {now} from '../util/time_control';
 import {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
+import {ColorMode} from '../gl/color_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {rasterUniformValues} from './program/raster_program';
 import {EXTENT} from '../data/extent';
@@ -27,6 +28,12 @@ type FadeValues = {
     tileOpacity: number;
     parentTileOpacity?: number;
     fadeMix: {opacity: number; mix: number};
+};
+
+type RasterBlendModeState = {
+    colorMode: Readonly<ColorMode>;
+    isPremultiplied: number;
+    blendNeutral: number;
 };
 
 const cornerCoords = [
@@ -93,6 +100,7 @@ function drawTiles(
     const projection = painter.style.projection;
 
     const colorMode = painter.colorModeForRenderPass();
+    const blendModeState = getBlendModeState(painter, layer);
     const align = !painter.options.moving;
     const rasterOpacity = layer.paint.get('raster-opacity');
     const useNearest = layer.paint.get('resampling') === 'nearest' || layer.paint.get('raster-resampling') === 'nearest';
@@ -133,15 +141,49 @@ function drawTiles(
 
         const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
         const projectionData = transform.getProjectionData({overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
-        const uniformValues = rasterUniformValues(parentTopLeft, parentScaleBy, fadeValues.fadeMix, layer, corners);
+        const uniformValues = rasterUniformValues(
+            parentTopLeft,
+            parentScaleBy,
+            fadeValues.fadeMix,
+            blendModeState.isPremultiplied,
+            blendModeState.blendNeutral,
+            layer,
+            corners
+        );
 
         const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');
         const stencilMode = stencilModes ? stencilModes[coord.overscaledZ] : StencilMode.disabled;
 
-        program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, flipCullfaceMode ? CullFaceMode.frontCCW : CullFaceMode.backCCW,
+        program.draw(context, gl.TRIANGLES, depthMode, stencilMode, blendModeState.colorMode ?? colorMode, flipCullfaceMode ? CullFaceMode.frontCCW : CullFaceMode.backCCW,
             uniformValues, terrainData, projectionData, layer.id, mesh.vertexBuffer,
             mesh.indexBuffer, mesh.segments);
     }
+}
+
+function getBlendModeState(painter: Painter, layer: RasterStyleLayer): RasterBlendModeState {
+    const blendMode = layer.paint.get('blend-mode');
+
+    if (blendMode === 'multiply') {
+        return {
+            colorMode: ColorMode.multiply,
+            isPremultiplied: 0,
+            blendNeutral: 1
+        };
+    }
+
+    if (blendMode === 'screen') {
+        return {
+            colorMode: ColorMode.screen,
+            isPremultiplied: 0,
+            blendNeutral: 0
+        };
+    }
+
+    return {
+        colorMode: painter.colorModeForRenderPass(),
+        isPremultiplied: 1,
+        blendNeutral: 0
+    };
 }
 
 /**

@@ -1,5 +1,7 @@
 uniform float u_fade_t;
 uniform float u_opacity;
+uniform float u_is_premultiplied;
+uniform float u_blend_neutral;
 uniform sampler2D u_image0;
 uniform sampler2D u_image1;
 
@@ -45,7 +47,12 @@ void main() {
     vec3 u_high_vec = vec3(u_brightness_low, u_brightness_low, u_brightness_low);
     vec3 u_low_vec = vec3(u_brightness_high, u_brightness_high, u_brightness_high);
 
-    fragColor = vec4(mix(u_high_vec, u_low_vec, rgb) * color.a, color.a);
+    vec3 blendedRgb = mix(u_high_vec, u_low_vec, rgb);
+    if (u_is_premultiplied > 0.5) {
+        fragColor = vec4(blendedRgb * color.a, color.a);
+    } else {
+        fragColor = vec4(mix(vec3(u_blend_neutral), blendedRgb, color.a), color.a);
+    }
 
 #ifdef OVERDRAW_INSPECTOR
     fragColor = vec4(1.0);

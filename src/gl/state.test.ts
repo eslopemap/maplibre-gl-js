@@ -78,7 +78,7 @@ describe('Value classes', () => {
         setValue: false
     });
     valueTest(BlendFunc, {
-        setValue: [context.gl.SRC_ALPHA, context.gl.SRC_ALPHA]
+        setValue: [context.gl.SRC_ALPHA, context.gl.ONE_MINUS_SRC_ALPHA, context.gl.SRC_ALPHA, context.gl.ONE_MINUS_SRC_ALPHA]
     });
     valueTest(BlendColor, {
         setValue: Color.white

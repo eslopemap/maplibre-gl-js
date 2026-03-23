@@ -1,6 +1,6 @@
 type BlendFuncConstant = WebGLRenderingContextBase['ZERO'] | WebGLRenderingContextBase['ONE'] | WebGLRenderingContextBase['SRC_COLOR'] | WebGLRenderingContextBase['ONE_MINUS_SRC_COLOR'] | WebGLRenderingContextBase['DST_COLOR'] | WebGLRenderingContextBase['ONE_MINUS_DST_COLOR'] | WebGLRenderingContextBase['SRC_ALPHA'] | WebGLRenderingContextBase['ONE_MINUS_SRC_ALPHA'] | WebGLRenderingContextBase['DST_ALPHA'] | WebGLRenderingContextBase['ONE_MINUS_DST_ALPHA'] | WebGLRenderingContextBase['CONSTANT_COLOR'] | WebGLRenderingContextBase['ONE_MINUS_CONSTANT_COLOR'] | WebGLRenderingContextBase['CONSTANT_ALPHA'] | WebGLRenderingContextBase['ONE_MINUS_CONSTANT_ALPHA'] | WebGLRenderingContextBase['BLEND_COLOR'];
 
-export type BlendFuncType = [BlendFuncConstant, BlendFuncConstant];
+export type BlendFuncType = [BlendFuncConstant, BlendFuncConstant] | [BlendFuncConstant, BlendFuncConstant, BlendFuncConstant, BlendFuncConstant];
 
 export type BlendEquationType = WebGLRenderingContextBase['FUNC_ADD'] | WebGLRenderingContextBase['FUNC_SUBTRACT'] | WebGLRenderingContextBase['FUNC_REVERSE_SUBTRACT'];
 

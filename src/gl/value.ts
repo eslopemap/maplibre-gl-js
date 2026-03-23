@@ -238,12 +238,18 @@ export class Blend extends BaseValue<boolean> {
 export class BlendFunc extends BaseValue<BlendFuncType> {
     getDefault(): BlendFuncType {
         const gl = this.gl;
-        return [gl.ONE, gl.ZERO];
+        return [gl.ONE, gl.ZERO, gl.ONE, gl.ZERO];
     }
     set(v: BlendFuncType) {
         const c = this.current;
-        if (v[0] === c[0] && v[1] === c[1] && !this.dirty) return;
-        this.gl.blendFunc(v[0], v[1]);
+        const cSrcAlpha = c.length === 4 ? c[2] : c[0];
+        const cDstAlpha = c.length === 4 ? c[3] : c[1];
+        const vSrcAlpha = v.length === 4 ? v[2] : v[0];
+        const vDstAlpha = v.length === 4 ? v[3] : v[1];
+
+        if (v[0] === c[0] && v[1] === c[1] && vSrcAlpha === cSrcAlpha && vDstAlpha === cDstAlpha && !this.dirty) return;
+
+        this.gl.blendFuncSeparate(v[0], v[1], vSrcAlpha, vDstAlpha);
         this.current = v;
         this.dirty = false;
     }

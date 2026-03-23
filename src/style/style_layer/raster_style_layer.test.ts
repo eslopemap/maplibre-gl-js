@@ -16,7 +16,7 @@ describe('RasterStyleLayer correctly handles "resampling" and "raster-resampling
     test('"raster-resampling" is undefined when instantiated with "resampling"', () => {
         const layerSpec = createLayerSpec();
         const layer = createStyleLayer(layerSpec, {});
-    
+
         const rasterResampling = layer.getPaintProperty('raster-resampling');
         expect(rasterResampling).toEqual(undefined);
     });
@@ -24,9 +24,27 @@ describe('RasterStyleLayer correctly handles "resampling" and "raster-resampling
     test('"resampling" is undefined when instantiated with "raster-resampling"', () => {
         const layerSpec = createLayerSpec();
         const layer = createStyleLayer(layerSpec, {});
-    
+
         const resampling = layer.getPaintProperty('resampling');
         expect(resampling).toEqual(undefined);
+    });
+
+});
+
+describe('RasterStyleLayer blend-mode paint property', () => {
+
+    test('is undefined by default', () => {
+        const layer = createStyleLayer(createLayerSpec(), {});
+
+        expect(layer.getPaintProperty('blend-mode')).toEqual(undefined);
+    });
+
+    test('accepts multiply and screen', () => {
+        const multiplyLayer = createStyleLayer(createLayerSpec({paint: {'blend-mode': 'multiply'}}), {});
+        const screenLayer = createStyleLayer(createLayerSpec({paint: {'blend-mode': 'screen'}}), {});
+
+        expect(multiplyLayer.getPaintProperty('blend-mode')).toEqual('multiply');
+        expect(screenLayer.getPaintProperty('blend-mode')).toEqual('screen');
     });
 
 });

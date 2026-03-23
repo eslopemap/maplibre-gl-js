@@ -11,6 +11,8 @@ export type RasterUniformsType = {
     'u_buffer_scale': Uniform1f;
     'u_fade_t': Uniform1f;
     'u_opacity': Uniform1f;
+    'u_is_premultiplied': Uniform1f;
+    'u_blend_neutral': Uniform1f;
     'u_image0': Uniform1i;
     'u_image1': Uniform1i;
     'u_brightness_low': Uniform1f;
@@ -28,6 +30,8 @@ const rasterUniforms = (context: Context, locations: UniformLocations): RasterUn
     'u_buffer_scale': new Uniform1f(context, locations.u_buffer_scale),
     'u_fade_t': new Uniform1f(context, locations.u_fade_t),
     'u_opacity': new Uniform1f(context, locations.u_opacity),
+    'u_is_premultiplied': new Uniform1f(context, locations.u_is_premultiplied),
+    'u_blend_neutral': new Uniform1f(context, locations.u_blend_neutral),
     'u_image0': new Uniform1i(context, locations.u_image0),
     'u_image1': new Uniform1i(context, locations.u_image1),
     'u_brightness_low': new Uniform1f(context, locations.u_brightness_low),
@@ -46,6 +50,8 @@ const rasterUniformValues = (
         mix: number;
         opacity: number;
     },
+    isPremultiplied: number,
+    blendNeutral: number,
     layer: RasterStyleLayer,
     cornerCoords: Array<Point>,
 ): UniformValues<RasterUniformsType> => ({
@@ -58,6 +64,8 @@ const rasterUniformValues = (
     'u_buffer_scale': 1,
     'u_fade_t': fade.mix,
     'u_opacity': fade.opacity * layer.paint.get('raster-opacity'),
+    'u_is_premultiplied': isPremultiplied,
+    'u_blend_neutral': blendNeutral,
     'u_image0': 0,
     'u_image1': 1,
     'u_brightness_low': layer.paint.get('raster-brightness-min'),
