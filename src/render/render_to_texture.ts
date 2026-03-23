@@ -19,7 +19,8 @@ const LAYERS_TO_TEXTURES: { [keyof in StyleLayer['type']]?: boolean } = {
     line: true,
     raster: true,
     hillshade: true,
-    'color-relief': true
+    'color-relief': true,
+    'terrain-analysis': true
 };
 
 /**
