@@ -27,6 +27,13 @@ export class ColorMode {
     static alphaBlended: Readonly<ColorMode>;
     static multiply: Readonly<ColorMode>;
     static screen: Readonly<ColorMode>;
+    /**
+     * Multiply blend for draping premultiplied-alpha FBO textures onto the screen.
+     * RGB: result = src_premult × dst + dst × (1 - src_alpha)
+     *    = dst × (src_rgb×alpha + 1 - alpha)  — correct alpha-aware multiply.
+     * Alpha: preserved from destination.
+     */
+    static multiplyDrape: Readonly<ColorMode>;
 }
 
 ColorMode.Replace = [ONE, ZERO, ONE, ZERO];
@@ -36,3 +43,4 @@ ColorMode.unblended = new ColorMode(ColorMode.Replace, Color.transparent, [true,
 ColorMode.alphaBlended = new ColorMode([ONE, ONE_MINUS_SRC_ALPHA, ONE, ONE_MINUS_SRC_ALPHA], Color.transparent, [true, true, true, true]);
 ColorMode.multiply = new ColorMode([DST_COLOR, ZERO, ZERO, ONE], Color.transparent, [true, true, true, true]);
 ColorMode.screen = new ColorMode([ONE, ONE_MINUS_SRC_COLOR, ZERO, ONE], Color.transparent, [true, true, true, true]);
+ColorMode.multiplyDrape = new ColorMode([DST_COLOR, ONE_MINUS_SRC_ALPHA, ZERO, ONE], Color.transparent, [true, true, true, true]);

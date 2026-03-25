@@ -7,6 +7,7 @@ import {type Style} from '../style/style';
 import {type Terrain} from './terrain';
 import {RenderPool} from '../gl/render_pool';
 import {type Texture} from './texture';
+import {ColorMode} from '../gl/color_mode';
 import type {StyleLayer} from '../style/style_layer';
 import {ImageSource} from '../source/image_source';
 
@@ -47,8 +48,9 @@ export class RenderToTexture {
      * a render stack is a set of layers which should be rendered into one texture
      * every stylesheet can have multiple stacks. A new stack is created if layers which should
      * not rendered to texture sit between layers which should rendered to texture. e.g. hillshading or symbols
+     * Each stack tracks an optional blendMode for drape-time application.
      */
-    _stacks: Array<Array<string>>;
+    _stacks: Array<{layers: Array<string>; blendMode?: string}>;
     /**
      * remember the previous processed layer to check if a new stack is needed
      */
@@ -149,10 +151,19 @@ export class RenderToTexture {
         // remember background, fill, line & raster layer to render into a stack
         if (LAYERS_TO_TEXTURES[type]) {
             // create a new stack if previous layer was not rendered to texture (f.e. symbols)
-            if (!this._prevType || !LAYERS_TO_TEXTURES[this._prevType]) this._stacks.push([]);
+            if (!this._prevType || !LAYERS_TO_TEXTURES[this._prevType]) this._stacks.push({layers: []});
             // push current render-to-texture layer to render-stack
             this._prevType = type;
-            this._stacks[this._stacks.length - 1].push(layer.id);
+            const currentStack = this._stacks[this._stacks.length - 1];
+            currentStack.layers.push(layer.id);
+            // Capture blend mode from terrain-analysis layers for drape-time application.
+            // Only multiply needs drape-time override; screen works correctly in FBO.
+            if (type === 'terrain-analysis') {
+                const blendMode = (layer as any).paint.get('blend-mode');
+                if (blendMode === 'multiply') {
+                    currentStack.blendMode = blendMode;
+                }
+            }
             // rendering is done later, all in once
             if (!isLastLayer) return true;
         }
@@ -160,11 +171,14 @@ export class RenderToTexture {
         // in case a stack is finished render all collected stack-layers into a texture
         if (LAYERS_TO_TEXTURES[this._prevType] || (LAYERS_TO_TEXTURES[type] && isLastLayer)) {
             this._prevType = type;
-            const stack = this._stacks.length - 1, layers = this._stacks[stack] || [];
+            const stack = this._stacks.length - 1;
+            const stackInfo = this._stacks[stack];
+            const layers = stackInfo?.layers || [];
+            const drapeColorMode = this._getDrapeColorMode(stackInfo);
             for (const tile of this._renderableTiles) {
                 // if render pool is full draw current tiles to screen and free pool
                 if (this.pool.isFull()) {
-                    drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+                    drawTerrain(this.painter, this.terrain, this._rttTiles, options, drapeColorMode);
                     this._rttTiles = [];
                     this.pool.freeAllObjects();
                 }
@@ -195,7 +209,7 @@ export class RenderToTexture {
                     if (layer.source) tile.rttFingerprint[layer.source] = this._rttFingerprints[layer.source][tile.tileID.key];
                 }
             }
-            drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+            drawTerrain(this.painter, this.terrain, this._rttTiles, options, drapeColorMode);
             this._rttTiles = [];
             this.pool.freeAllObjects();
 
@@ -203,6 +217,18 @@ export class RenderToTexture {
         }
 
         return false;
+    }
+
+    /**
+     * Returns the ColorMode to use when draping an RTT stack's texture onto the
+     * 3D terrain mesh. For stacks containing layers with a blend mode (e.g. multiply),
+     * the blend is applied here — against the actual screen content — rather than
+     * inside the FBO where the destination would be a cleared transparent buffer.
+     */
+    private _getDrapeColorMode(stackInfo: {layers: Array<string>; blendMode?: string}): Readonly<ColorMode> | undefined {
+        if (!stackInfo?.blendMode) return undefined;
+        if (stackInfo.blendMode === 'multiply') return ColorMode.multiplyDrape;
+        return undefined;
     }
 
 }

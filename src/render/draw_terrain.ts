@@ -69,12 +69,12 @@ function drawCoords(painter: Painter, terrain: Terrain) {
     context.viewport.set([0, 0, painter.width, painter.height]);
 }
 
-function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, renderOptions: RenderOptions) {
+function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, renderOptions: RenderOptions, drapeColorMode?: Readonly<ColorMode>) {
     const {isRenderingGlobe} = renderOptions;
     const context = painter.context;
     const gl = context.gl;
     const tr = painter.transform;
-    const colorMode = painter.colorModeForRenderPass();
+    const colorMode = drapeColorMode ?? painter.colorModeForRenderPass();
     const depthMode = painter.getDepthModeFor3D();
     const program = painter.useProgram('terrain');
 

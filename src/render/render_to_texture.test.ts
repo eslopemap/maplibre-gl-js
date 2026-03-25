@@ -220,4 +220,122 @@ describe('render to texture', () => {
         rtt.prepareForRender(style, 0);
         expect(tile.rtt.length).toBe(0);
     });
+
+    test('stack tracks blend mode from terrain-analysis layer with multiply', () => {
+        const terrainAnalysisLayer = {
+            id: 'ta-slope',
+            type: 'terrain-analysis',
+            source: 'maine',
+            isHidden: () => false,
+            paint: {get: (prop: string) => prop === 'blend-mode' ? 'multiply' : undefined}
+        } as any;
+
+        style._layers['ta-slope'] = terrainAnalysisLayer;
+        style._order = ['maine-fill', 'ta-slope'];
+        rtt.prepareForRender(style, 0);
+        tile.rtt = [];
+
+        const renderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        rtt.renderLayer(fillLayer, renderOptions);
+        rtt.renderLayer(terrainAnalysisLayer, renderOptions);
+
+        // Both layers should be in the same stack with multiply blend mode
+        expect(rtt._stacks).toHaveLength(1);
+        expect(rtt._stacks[0].layers).toEqual(['maine-fill', 'ta-slope']);
+        expect(rtt._stacks[0].blendMode).toBe('multiply');
+    });
+
+    test('stack tracks blend mode from terrain-analysis layer with screen', () => {
+        const terrainAnalysisLayer = {
+            id: 'ta-slope',
+            type: 'terrain-analysis',
+            source: 'maine',
+            isHidden: () => false,
+            paint: {get: (prop: string) => prop === 'blend-mode' ? 'screen' : undefined}
+        } as any;
+
+        style._layers['ta-slope'] = terrainAnalysisLayer;
+        style._order = ['maine-fill', 'ta-slope'];
+        rtt.prepareForRender(style, 0);
+        tile.rtt = [];
+
+        const renderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        rtt.renderLayer(fillLayer, renderOptions);
+        rtt.renderLayer(terrainAnalysisLayer, renderOptions);
+
+        // Screen does NOT get tracked on the stack — it works correctly inside the FBO
+        // (screen against cleared FBO: src + 0×(1-src) = src, preserves source colors)
+        expect(rtt._stacks[0].blendMode).toBeUndefined();
+    });
+
+    test('stack has no blend mode for normal terrain-analysis layer', () => {
+        const terrainAnalysisLayer = {
+            id: 'ta-slope',
+            type: 'terrain-analysis',
+            source: 'maine',
+            isHidden: () => false,
+            paint: {get: (prop: string) => prop === 'blend-mode' ? 'normal' : undefined}
+        } as any;
+
+        style._layers['ta-slope'] = terrainAnalysisLayer;
+        style._order = ['maine-fill', 'ta-slope'];
+        rtt.prepareForRender(style, 0);
+        tile.rtt = [];
+
+        const renderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        rtt.renderLayer(fillLayer, renderOptions);
+        rtt.renderLayer(terrainAnalysisLayer, renderOptions);
+
+        expect(rtt._stacks[0].blendMode).toBeUndefined();
+    });
+
+    test('blend mode terrain-analysis in separate stack (after non-RTT layer) still tracked', () => {
+        const circleLayer = {
+            id: 'maine-circle',
+            type: 'circle',
+            source: 'maine',
+            isHidden: () => false
+        } as any;
+
+        const terrainAnalysisLayer = {
+            id: 'ta-slope',
+            type: 'terrain-analysis',
+            source: 'maine',
+            isHidden: () => false,
+            paint: {get: (prop: string) => prop === 'blend-mode' ? 'multiply' : undefined}
+        } as any;
+
+        style._layers['maine-circle'] = circleLayer;
+        style._layers['ta-slope'] = terrainAnalysisLayer;
+        style._order = ['maine-fill', 'maine-circle', 'ta-slope'];
+        rtt.prepareForRender(style, 0);
+        tile.rtt = [];
+
+        const renderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        rtt.renderLayer(fillLayer, renderOptions);
+        // circle breaks the stack
+        rtt.renderLayer(circleLayer, renderOptions);
+        rtt.renderLayer(terrainAnalysisLayer, renderOptions);
+
+        // Two stacks: fill in stack 0, terrain-analysis in stack 1
+        expect(rtt._stacks).toHaveLength(2);
+        expect(rtt._stacks[0].layers).toEqual(['maine-fill']);
+        expect(rtt._stacks[0].blendMode).toBeUndefined();
+        expect(rtt._stacks[1].layers).toEqual(['ta-slope']);
+        expect(rtt._stacks[1].blendMode).toBe('multiply');
+    });
+
+    test('_getDrapeColorMode returns multiplyDrape for multiply blend', () => {
+        expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: 'multiply'})).toBe(ColorMode.multiplyDrape);
+    });
+
+    test('_getDrapeColorMode returns undefined for screen (handled in FBO)', () => {
+        // Screen blend works correctly inside the FBO, so no drape override needed
+        expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: 'screen'})).toBeUndefined();
+    });
+
+    test('_getDrapeColorMode returns undefined for normal/no blend', () => {
+        expect((rtt as any)._getDrapeColorMode({layers: ['a']})).toBeUndefined();
+        expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: undefined})).toBeUndefined();
+    });
 });
