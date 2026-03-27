@@ -5,6 +5,22 @@
 ### 🐞 Bug fixes
 - _...Add new stuff here..._
 
+## 5.21.3
+
+### ✨ Features and improvements
+
+- Add `terrain-analysis` layer type for DEM-based slope visualization with color-relief backward compatibility
+- Support step expressions for discrete color bands in terrain-analysis layers
+- Add `blend-mode` paint property (`multiply`, `screen`) for raster and terrain-analysis layers
+- Apply mercator correction on both axes for more accurate slope estimation
+
+### 🐞 Bug fixes
+
+- Fix multiply blend appearing invisible when terrain-analysis uses a separate RTT stack in 3D terrain mode
+- Preserve destination alpha for multiply and screen blend modes
+- Fix terrain-analysis 3D terrain compatibility
+- Remove sloppy type workarounds
+
 ## 5.21.0
 
 ### ✨ Features and improvements

@@ -139,7 +139,8 @@ void main() {
     }
     vec4 rampColor = u_opacity * texture(u_color_stops, vec2(x, 0));
     if (u_is_premultiplied > 0.5) {
-        fragColor = vec4(rampColor.rgb * rampColor.a, rampColor.a);
+        // rampColor is already premultiplied: rgb = color * opacity, a = opacity
+        fragColor = rampColor;
     } else {
         fragColor = vec4(mix(vec3(u_blend_neutral), rampColor.rgb, rampColor.a), rampColor.a);
     }
