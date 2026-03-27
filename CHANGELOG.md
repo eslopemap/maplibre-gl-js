@@ -5,6 +5,15 @@
 ### 🐞 Bug fixes
 - _...Add new stuff here..._
 
+## 5.21.6
+
+### 🐞 Bug fixes
+
+- Fix screen blend losing its effect in 3D terrain (RTT) isolated stacks — add `screenDrape` ColorMode
+- Rename `rttDeferMultiply` → `rttDeferBlend` to cover both multiply and screen blend modes
+- Add screen 3D terrain render tests: `screen-3d-terrain`, `screen-3d-stack-isolated`, `screen` (2D baseline)
+- Add `3d-terrain-dark-bg` baseline test for comparing blend mode effects
+
 ## 5.21.5
 
 ### 🐞 Bug fixes

@@ -21,8 +21,8 @@ export function drawTerrainAnalysis(painter: Painter, tileManager: TileManager, 
     const useSubdivision = projection.useSubdivision;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-    const rttDeferMultiply = !!renderOptions.rttDeferMultiply;
-    const blendModeState = getBlendModeState(painter, layer, rttDeferMultiply);
+    const rttDeferBlend = !!renderOptions.rttDeferBlend;
+    const blendModeState = getBlendModeState(painter, layer, rttDeferBlend);
 
     if (useSubdivision) {
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
@@ -112,16 +112,18 @@ type BlendModeState = {
     blendNeutral: number;
 };
 
-function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, rttDeferMultiply: boolean): BlendModeState {
+function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, rttDeferBlend: boolean): BlendModeState {
     const blendMode = layer.paint.get('blend-mode');
 
-    // When the RTT system defers multiply to drape time (multiplyDrape), use normal
-    // alpha blending inside the FBO. This happens when terrain-analysis is the first
-    // layer in its RTT stack — the FBO starts cleared to transparent black, and
-    // multiply against (0,0,0,0) produces invisible output.
-    // When the stack has prior content (e.g. background), multiply works correctly
-    // inside the FBO and rttDeferMultiply is false.
-    if (rttDeferMultiply && blendMode === 'multiply') {
+    // When the RTT system defers the blend to drape time, use normal alpha blending
+    // inside the FBO. This happens when terrain-analysis is the first layer in its
+    // RTT stack — the FBO starts cleared to transparent black, and:
+    //   - multiply against (0,0,0,0) produces invisible output (src × 0 = 0)
+    //   - screen against (0,0,0,0) loses the screen effect (src + 0 = src, identity)
+    // The actual blend is applied at drape time via multiplyDrape/screenDrape.
+    // When the stack has prior content (e.g. background), the blend works correctly
+    // inside the FBO and rttDeferBlend is false.
+    if (rttDeferBlend && (blendMode === 'multiply' || blendMode === 'screen')) {
         return {
             colorMode: painter.colorModeForRenderPass(),
             isPremultiplied: 1,

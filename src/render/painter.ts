@@ -79,11 +79,12 @@ export type RenderOptions = {
     isRenderingToTexture: boolean;
     isRenderingGlobe: boolean;
     /**
-     * When true, the RTT system will apply multiply blend at drape time (multiplyDrape),
-     * so the draw function should use normal alpha blending inside the FBO.
+     * When true, the RTT system will apply the blend mode at drape time
+     * (multiplyDrape/screenDrape), so the draw function should use normal
+     * alpha blending inside the FBO.
      * When false (or absent), the draw function should use its own blend mode.
      */
-    rttDeferMultiply?: boolean;
+    rttDeferBlend?: boolean;
 };
 
 /**
