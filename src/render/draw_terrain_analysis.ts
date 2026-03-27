@@ -21,7 +21,8 @@ export function drawTerrainAnalysis(painter: Painter, tileManager: TileManager, 
     const useSubdivision = projection.useSubdivision;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-    const blendModeState = getBlendModeState(painter, layer, isRenderingToTexture);
+    const rttDeferMultiply = !!renderOptions.rttDeferMultiply;
+    const blendModeState = getBlendModeState(painter, layer, rttDeferMultiply);
 
     if (useSubdivision) {
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
@@ -111,16 +112,16 @@ type BlendModeState = {
     blendNeutral: number;
 };
 
-function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, isRenderingToTexture: boolean): BlendModeState {
+function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, rttDeferMultiply: boolean): BlendModeState {
     const blendMode = layer.paint.get('blend-mode');
 
-    // When rendering to an FBO (3D terrain) with multiply blend, use normal alpha blending.
-    // Multiply is applied later at drape time in drawTerrain(), where the FBO texture
-    // composites against the actual screen content. Without this, multiply against a
-    // cleared FBO (rgba 0,0,0,0) produces invisible output (src × 0 = 0).
-    // Screen blend does NOT need this override: screen against a cleared FBO gives
-    // src + 0×(1-src) = src, which preserves the source colors correctly.
-    if (isRenderingToTexture && blendMode === 'multiply') {
+    // When the RTT system defers multiply to drape time (multiplyDrape), use normal
+    // alpha blending inside the FBO. This happens when terrain-analysis is the first
+    // layer in its RTT stack — the FBO starts cleared to transparent black, and
+    // multiply against (0,0,0,0) produces invisible output.
+    // When the stack has prior content (e.g. background), multiply works correctly
+    // inside the FBO and rttDeferMultiply is false.
+    if (rttDeferMultiply && blendMode === 'multiply') {
         return {
             colorMode: painter.colorModeForRenderPass(),
             isPremultiplied: 1,

@@ -101,7 +101,7 @@ export class RenderToTexture {
                     this._coordsAscending[id][key].push(keys[key]);
                 }
             }
-            
+
         }
 
         this._rttFingerprints = {};
@@ -143,7 +143,6 @@ export class RenderToTexture {
     renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean {
         if (layer.isHidden(this.painter.transform.zoom)) return false;
 
-        const options: RenderOptions = {...renderOptions, isRenderingToTexture: true};
         const type = layer.type;
         const painter = this.painter;
         const isLastLayer = this._renderableLayerIds[this._renderableLayerIds.length - 1] === layer.id;
@@ -158,9 +157,15 @@ export class RenderToTexture {
             currentStack.layers.push(layer.id);
             // Capture blend mode from terrain-analysis layers for drape-time application.
             // Only multiply needs drape-time override; screen works correctly in FBO.
+            // Only set stack-level blendMode when the terrain-analysis multiply layer
+            // is the first layer in the stack (i.e. the FBO starts cleared to transparent
+            // black). In that case, multiply inside the FBO would produce invisible output
+            // (src × 0 = 0), so we defer the multiply to drape time via multiplyDrape.
+            // When the stack already has content (e.g. a background layer), multiply works
+            // correctly inside the FBO against that content — no drape override needed.
             if (type === 'terrain-analysis') {
                 const blendMode = (layer as any).paint.get('blend-mode');
-                if (blendMode === 'multiply') {
+                if (blendMode === 'multiply' && currentStack.layers.length === 1) {
                     currentStack.blendMode = blendMode;
                 }
             }
@@ -175,6 +180,9 @@ export class RenderToTexture {
             const stackInfo = this._stacks[stack];
             const layers = stackInfo?.layers || [];
             const drapeColorMode = this._getDrapeColorMode(stackInfo);
+            // Tell draw functions whether multiply is deferred to drape time
+            const rttDeferMultiply = !!stackInfo?.blendMode;
+            const options: RenderOptions = {...renderOptions, isRenderingToTexture: true, rttDeferMultiply};
             for (const tile of this._renderableTiles) {
                 // if render pool is full draw current tiles to screen and free pool
                 if (this.pool.isFull()) {

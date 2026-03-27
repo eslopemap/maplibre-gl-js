@@ -5,6 +5,14 @@
 ### 🐞 Bug fixes
 - _...Add new stuff here..._
 
+## 5.21.5
+
+### 🐞 Bug fixes
+
+- Fix terrain-analysis multiply blend rendering blank in 3D terrain (RTT) mode when sharing a stack with background/other layers
+- Add `rttDeferMultiply` flag to correctly distinguish isolated-stack vs same-stack multiply blend in FBO rendering
+- Add 3D terrain render tests: `3d-terrain-basic`, `multiply-3d-terrain`, `multiply-3d-stack-isolated`
+
 ## 5.21.3
 
 ### ✨ Features and improvements
