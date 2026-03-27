@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Built-in Terrain Analysis — Slope &amp; Color Relief — MapLibre GL JS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <script src="https://unpkg.com/@eslopemap/maplibre-gl@5.21.4/dist/maplibre-gl.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@eslopemap/maplibre-gl@5.21.4/dist/maplibre-gl.css" />
+  <!-- Use local dev build (npm run build-dev) -->
+  <!-- <script src="dist/maplibre-gl-dev.js"></script>
+  <link rel="stylesheet" href="dist/maplibre-gl.css" /> -->
+
+  <style>
+    html, body, #map { margin: 0; width: 100%; height: 100%; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+      min-width: 230px;
+      font-size: 13px;
+      backdrop-filter: blur(6px);
+    }
+
+    #legend {
+      position: absolute;
+      left: 10px;
+      bottom: 30px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+      min-width: 260px;
+      font-size: 12px;
+      line-height: 1.3;
+      backdrop-filter: blur(6px);
+    }
+
+    .row { margin: 6px 0; }
+    .legend-title { font-weight: 700; margin-bottom: 6px; }
+    .ramp {
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.15);
+      margin: 6px 0 4px;
+    }
+    .labels { display: flex; justify-content: space-between; opacity: 0.85; font-size: 11px; }
+    select, input[type=range] { width: 100%; }
+    label strong { font-size: 13px; }
+    .hint { opacity: 0.6; font-size: 11px; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="controls">
+    <div class="row">
+      <label for="mode"><strong>Analysis mode</strong></label><br />
+      <select id="mode">
+        <option value="slope" selected>Slope (terrain-analysis)</option>
+        <option value="aspect">Aspect (terrain-analysis)</option>
+        <option value="elevation">Color Relief (terrain-analysis)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="opacity"><strong>Overlay opacity</strong>: <span id="opacityValue">0.6</span></label><br />
+      <input id="opacity" type="range" min="0" max="1" step="0.01" value="0.6" />
+    </div>
+
+    <div class="row">
+      <label><strong>Blend mode</strong></label><br />
+      <select id="blendMode">
+        <option value="normal">Normal (alpha)</option>
+        <option value="multiply" selected>Multiply</option>
+        <option value="screen">Screen</option>
+      </select>
+      <div class="hint">Applied to terrain-analysis layer</div>
+    </div>
+
+    <div class="row">
+      <label><input id="terrain3d" type="checkbox" /> <strong>3D terrain</strong></label>
+      <div class="hint">Exaggeration: <span id="exagValue">1.5</span></div>
+      <input id="exag" type="range" min="0" max="5" step="0.1" value="1.5" />
+    </div>
+
+    <div class="row">
+      <label><input id="hillshadeEnabled" type="checkbox" /> <strong>Hillshade</strong></label>
+    </div>
+
+    <div class="row hint">
+      Built-in <code>terrain-analysis</code> and <code>hillshade</code> layers — no custom shaders
+    </div>
+  </div>
+
+  <div id="legend">
+    <div id="legendTitle" class="legend-title">Slope (degrees)</div>
+    <div id="legendRamp" class="ramp"></div>
+    <div id="legendLabels" class="labels"></div>
+  </div>
+
+  <script>
+    // ── Color ramps for each mode ──────────────────────────────────────────
+    const COLOR_RAMPS = {
+      slope: {
+        // Interpolate expression keyed on ['slope']
+        expression: [
+          'interpolate', ['linear'], ['slope'],
+          0,  '#00ff00',
+          15, '#ffff00',
+          30, '#ff8800',
+          45, '#ff0000',
+          60, '#aa0000',
+          90, '#550000'
+        ],
+        legendTitle: 'Slope (degrees)',
+        legendGradient: 'linear-gradient(to right, #00ff00, #ffff00 17%, #ff8800 33%, #ff0000 50%, #aa0000 67%, #550000)',
+        legendLabels: ['0°', '15°', '30°', '45°', '60°', '90°']
+      },
+      aspect: {
+        // Step expression keyed on ['aspect']
+        expression: [
+          'step', ['aspect'],
+          '#ff0000',          // N (0°)
+          45,  '#ffff00',     // NE
+          135, '#00ff00',     // SE
+          225, '#00ffff',     // SW
+          315, '#0000ff'      // NW
+        ],
+        legendTitle: 'Aspect (compass direction)',
+        legendGradient: 'linear-gradient(to right, #ff0000, #ffff00 12.5%, #00ff00 37.5%, #00ffff 62.5%, #0000ff 87.5%)',
+        legendLabels: ['N', 'NE', 'SE', 'SW', 'NW']
+      },
+      elevation: {
+        // Interpolate expression keyed on ['elevation']
+        expression: [
+          'interpolate', ['linear'], ['elevation'],
+          0,    '#2b83ba',
+          500,  '#abdda4',
+          1000, '#ffffbf',
+          2000, '#fdae61',
+          3000, '#d7191c',
+          4500, '#ffffff'
+        ],
+        legendTitle: 'Elevation (meters)',
+        legendGradient: 'linear-gradient(to right, #2b83ba, #abdda4 11%, #ffffbf 22%, #fdae61 44%, #d7191c 67%, #ffffff)',
+        legendLabels: ['0 m', '500', '1000', '2000', '3000', '4500']
+      }
+    };
+
+    // ── Map setup ──────────────────────────────────────────────────────────
+    const map = new maplibregl.Map({
+      container: 'map',
+      center: [6.8652, 45.8326],   // Mont Blanc area
+      zoom: 12,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+          },
+          dem: {
+            type: 'raster-dem',
+            url: 'https://tiles.mapterhorn.com/tilejson.json',
+            tileSize: 256
+          }
+        },
+        layers: [
+          // Base map
+          {
+            id: 'basemap',
+            type: 'raster',
+            source: 'osm',
+            paint: {
+              'raster-opacity': 1
+            }
+          },
+          {
+            id: 'hillshade',
+            type: 'hillshade',
+            source: 'dem',
+            layout: {
+              visibility: 'none'
+            }
+          },
+          // Terrain analysis overlay — built-in layer, blend-mode applied here
+          {
+            id: 'analysis',
+            type: 'terrain-analysis',
+            source: 'dem',
+            paint: {
+              'terrain-analysis-attribute': 'slope',
+              'terrain-analysis-opacity': 0.6,
+              'terrain-analysis-color': COLOR_RAMPS.slope.expression,
+              'blend-mode': 'multiply'
+            }
+          }
+        ]
+      }
+    });
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let currentMode = 'slope';
+
+    // ── Controls ───────────────────────────────────────────────────────────
+    const modeEl      = document.getElementById('mode');
+    const opacityEl   = document.getElementById('opacity');
+    const opacityVal  = document.getElementById('opacityValue');
+    const blendModeEl = document.getElementById('blendMode');
+
+    modeEl.addEventListener('change', () => {
+      currentMode = modeEl.value;
+      const ramp = COLOR_RAMPS[currentMode];
+
+      // The terrain-analysis layer handles slope, aspect, AND elevation
+      // Just change the attribute and color expression
+      map.setPaintProperty('analysis', 'terrain-analysis-attribute', currentMode);
+      map.setPaintProperty('analysis', 'terrain-analysis-color', ramp.expression);
+
+      updateLegend();
+    });
+
+    opacityEl.addEventListener('input', () => {
+      const v = Number(opacityEl.value);
+      opacityVal.textContent = v.toFixed(2);
+      map.setPaintProperty('analysis', 'terrain-analysis-opacity', v);
+    });
+
+    blendModeEl.addEventListener('change', () => {
+      map.setPaintProperty('analysis', 'blend-mode', blendModeEl.value);
+    });
+
+    const terrain3dEl = document.getElementById('terrain3d');
+    const exagEl      = document.getElementById('exag');
+    const exagVal     = document.getElementById('exagValue');
+    const hillshadeEl = document.getElementById('hillshadeEnabled');
+
+    terrain3dEl.addEventListener('change', () => {
+      if (terrain3dEl.checked) {
+        map.setTerrain({ source: 'dem', exaggeration: Number(exagEl.value) });
+      } else {
+        map.setTerrain(null);
+      }
+    });
+
+    exagEl.addEventListener('input', () => {
+      const v = Number(exagEl.value);
+      exagVal.textContent = v.toFixed(1);
+      if (terrain3dEl.checked) {
+        map.setTerrain({ source: 'dem', exaggeration: v });
+      }
+    });
+
+    hillshadeEl.addEventListener('change', () => {
+      map.setLayoutProperty('hillshade', 'visibility', hillshadeEl.checked ? 'visible' : 'none');
+    });
+
+    // ── Legend ──────────────────────────────────────────────────────────────
+    function updateLegend() {
+      const ramp = COLOR_RAMPS[currentMode];
+      document.getElementById('legendTitle').textContent = ramp.legendTitle;
+      document.getElementById('legendRamp').style.background = ramp.legendGradient;
+      document.getElementById('legendLabels').innerHTML =
+        ramp.legendLabels.map(l => `<span>${l}</span>`).join('');
+    }
+    updateLegend();
+
+    map.on('error', e => console.error('Map error:', e.error ? e.error.message : e));
+  </script>
+</body>
+</html>

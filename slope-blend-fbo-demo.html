@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Blend-mode FBO demo — multiple layers</title>
+  <script src="dist/maplibre-gl-dev.js"></script>
+  <link rel="stylesheet" href="dist/maplibre-gl.css" />
+  <style>
+    html, body, #map { margin: 0; width: 100%; height: 100%; }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.93);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font: 13px/1.5 system-ui, sans-serif;
+      z-index: 10;
+      min-width: 260px;
+    }
+    #controls h3 { margin: 0 0 8px; font-size: 14px; }
+    #controls h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; color: #666; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .row label { flex: 1; font-size: 12px; }
+    .row select, .row input[type=range] { flex-shrink: 0; }
+    .row input[type=checkbox] { margin: 0; }
+    .badge {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 11px; font-weight: 700; margin-left: 4px;
+    }
+    .badge-fbo  { background: #d4edda; color: #155724; }
+    .badge-2d   { background: #d1ecf1; color: #0c5460; }
+    #status-bar {
+      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.75); color: #fff;
+      padding: 6px 14px; border-radius: 16px;
+      font: 12px monospace; z-index: 10; white-space: nowrap;
+    }
+
+    /* Stack-break indicator */
+    #stack-info {
+      font-size: 11px; color: #333; margin-top: 6px;
+      border-top: 1px solid #ddd; padding-top: 6px;
+    }
+    code { font: 12px monospace; background: #f4f4f4; padding: 1px 4px; border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="controls">
+  <h3>Blend-mode FBO test</h3>
+
+  <div id="status-bar-inner">
+    Render mode: <span id="render-mode">2D (direct)</span>
+  </div>
+
+  <h4>Layer stack configuration</h4>
+
+  <div class="row">
+    <input type="checkbox" id="stackBreak" checked />
+    <label for="stackBreak">
+      Insert <code>symbol</code> layer between basemap and slope
+      <br><span style="font-size:11px;color:#666">(forces slope into isolated RTT stack — exposes FBO bug without fix)</span>
+    </label>
+  </div>
+
+  <h4>3D Terrain</h4>
+
+  <div class="row">
+    <input type="checkbox" id="terrain3d" />
+    <label for="terrain3d">
+      Enable 3D terrain (activates RTT / FBO path)
+      <span id="fbo-badge" class="badge badge-2d">2D</span>
+    </label>
+  </div>
+
+  <div class="row">
+    <label for="exag">Exaggeration</label>
+    <input type="range" id="exag" min="0.5" max="3" step="0.1" value="1.5" style="width:80px" />
+    <span id="exagVal">1.5×</span>
+  </div>
+
+  <h4>Slope layer (terrain-analysis)</h4>
+
+  <div class="row">
+    <label for="blendMode1">Blend mode</label>
+    <select id="blendMode1">
+      <option value="normal">normal</option>
+      <option value="multiply" selected>multiply</option>
+      <option value="screen">screen</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label for="opacity1">Opacity</label>
+    <input type="range" id="opacity1" min="0" max="1" step="0.01" value="0.65" style="width:80px"/>
+    <span id="opacityVal1">0.65</span>
+  </div>
+
+  <h4>Elevation layer (terrain-analysis)</h4>
+
+  <div class="row">
+    <label for="blendMode2">Blend mode</label>
+    <select id="blendMode2">
+      <option value="normal" selected>normal</option>
+      <option value="multiply">multiply</option>
+      <option value="screen">screen</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label for="opacity2">Opacity</label>
+    <input type="range" id="opacity2" min="0" max="1" step="0.01" value="0.35" style="width:80px"/>
+    <span id="opacityVal2">0.35</span>
+  </div>
+
+  <h4>Hillshade layer</h4>
+  <div class="row">
+    <input type="checkbox" id="hillshadeOn" checked />
+    <label for="hillshadeOn">Show hillshade (same RTT stack as basemap)</label>
+  </div>
+
+  <div id="stack-info">
+    <b>Active layer order:</b>
+    <div id="stack-diagram"></div>
+  </div>
+</div>
+
+<div id="status-bar">–</div>
+
+<script>
+  // ── Color ramps ────────────────────────────────────────────────────────────
+  const SLOPE_RAMP = [
+    'interpolate', ['linear'], ['get', 'slope'],
+    0,   '#1a9641',
+    15,  '#a6d96a',
+    25,  '#ffffbf',
+    35,  '#fdae61',
+    45,  '#d7191c',
+    90,  '#ffffff'
+  ];
+
+  const ELEV_RAMP = [
+    'interpolate', ['linear'], ['get', 'elevation'],
+    0,    '#2b83ba',
+    500,  '#abdda4',
+    1000, '#ffffbf',
+    2000, '#fdae61',
+    3000, '#d7191c',
+    4500, '#ffffff'
+  ];
+
+  // ── Build style function ───────────────────────────────────────────────────
+  function buildStyle({stackBreak, hillshadeOn}) {
+    /**
+     * Layer order:
+     *   [basemap/raster]        ─┐ Stack A (RTT-eligible)
+     *   [hillshade]  (optional) ─┘
+     *
+     *   [symbol/labels] ← optional stack break; pushes following layers into Stack B
+     *
+     *   [elevation/terrain-analysis]  ─┐ Stack B (RTT-eligible)
+     *   [slope/terrain-analysis]      ─┘
+     *
+     * With stackBreak=true: slope+elevation are in their OWN isolated FBO.
+     * In 3D terrain mode this was previously invisible for multiply (FBO cleared to
+     * transparent black → multiply × 0 = 0). The fix applies multiply at drape time.
+     *
+     * With stackBreak=false: all RTT layers share one stack → multiply composites
+     * correctly with basemap pixels already in the FBO.
+     */
+    const layers = [
+      {
+        id: 'basemap',
+        type: 'raster',
+        source: 'osm',
+        paint: { 'raster-opacity': 1 }
+      }
+    ];
+
+    if (hillshadeOn) {
+      layers.push({
+        id: 'hillshade',
+        type: 'hillshade',
+        source: 'dem',
+        paint: {
+          'hillshade-shadow-color': '#473B24',
+          'hillshade-exaggeration': 0.5
+        }
+      });
+    }
+
+    if (stackBreak) {
+      // A symbol layer is NOT in LAYERS_TO_TEXTURES; it flushes the current
+      // RTT stack and starts a fresh FBO for the following RTT layers.
+      // This is the exact scenario that triggered the "multiply invisible in 3D" bug.
+      layers.push({
+        id: 'stack-break-label',
+        type: 'symbol',
+        source: 'osm-labels',
+        layout: {
+          'text-field': '',   // empty text so no clutter, but layer exists
+          'visibility': 'visible'
+        }
+      });
+    }
+
+    layers.push(
+      {
+        id: 'elevation',
+        type: 'terrain-analysis',
+        source: 'dem',
+        paint: {
+          'terrain-analysis-attribute': 'elevation',
+          'terrain-analysis-opacity': 0.35,
+          'terrain-analysis-color': ELEV_RAMP,
+          'blend-mode': 'normal'
+        }
+      },
+      {
+        id: 'slope',
+        type: 'terrain-analysis',
+        source: 'dem',
+        paint: {
+          'terrain-analysis-attribute': 'slope',
+          'terrain-analysis-opacity': 0.65,
+          'terrain-analysis-color': SLOPE_RAMP,
+          'blend-mode': 'multiply'
+        }
+      }
+    );
+
+    return {
+      version: 8,
+      sources: {
+        osm: {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+        },
+        'osm-labels': {
+          // Empty GeoJSON source — we just need a non-RTT layer to break the stack
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        },
+        dem: {
+          type: 'raster-dem',
+          url: 'https://tiles.mapterhorn.com/tilejson.json',
+          tileSize: 256
+        }
+      },
+      layers
+    };
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let stackBreak  = true;
+  let hillshadeOn = true;
+
+  // ── Map init ──────────────────────────────────────────────────────────────
+  const map = new maplibregl.Map({
+    container: 'map',
+    center: [6.8652, 45.8326],
+    zoom: 11.5,
+    style: buildStyle({stackBreak, hillshadeOn})
+  });
+
+  // ── Status bar ────────────────────────────────────────────────────────────
+  function updateStatusBar() {
+    const terrain3dOn = document.getElementById('terrain3d').checked;
+    const renderMode = terrain3dOn
+      ? '3D terrain — RTT/FBO path ACTIVE'
+      : '2D — direct canvas compositing';
+    document.getElementById('status-bar').textContent = 'Render mode: ' + renderMode;
+    document.getElementById('render-mode').textContent = renderMode;
+    document.getElementById('fbo-badge').textContent = terrain3dOn ? 'FBO' : '2D';
+    document.getElementById('fbo-badge').className = 'badge ' + (terrain3dOn ? 'badge-fbo' : 'badge-2d');
+  }
+
+  function updateStackDiagram() {
+    const terrain3dOn = document.getElementById('terrain3d').checked;
+    const bm1 = document.getElementById('blendMode1').value;
+    const bm2 = document.getElementById('blendMode2').value;
+    const hill = document.getElementById('hillshadeOn').checked;
+    const sb   = document.getElementById('stackBreak').checked;
+
+    let html = '<table style="font-size:11px;border-collapse:collapse;width:100%">';
+    const row = (name, type, extra='') =>
+      `<tr><td style="padding:1px 4px;border:1px solid #ccc;background:#f8f8f8;white-space:nowrap">${name}</td>
+           <td style="padding:1px 4px;border:1px solid #ccc;color:#555">${type}</td>
+           <td style="padding:1px 4px;border:1px solid #ccc;color:#888">${extra}</td></tr>`;
+
+    html += row('basemap', 'raster', terrain3dOn ? '← Stack A' : '→ canvas');
+    if (hill) html += row('hillshade', 'hillshade', terrain3dOn ? '← Stack A' : '→ canvas');
+    if (sb)   html += `<tr><td colspan=3 style="padding:2px;background:#fff3cd;text-align:center;font-weight:bold;border:1px dashed #ffc107">⚡ symbol layer — STACK BREAK</td></tr>`;
+    html += row('elevation', `terrain-analysis (${bm2})`, sb && terrain3dOn ? '← Stack B' : terrain3dOn ? '← Stack A' : '→ canvas');
+    html += row('slope', `terrain-analysis (${bm1})`, sb && terrain3dOn ? '← Stack B (multiplyDrape)' : terrain3dOn ? '← Stack A' : '→ canvas');
+    html += '</table>';
+
+    document.getElementById('stack-diagram').innerHTML = html;
+  }
+
+  // ── Controls ──────────────────────────────────────────────────────────────
+  function rebuildMap() {
+    stackBreak  = document.getElementById('stackBreak').checked;
+    hillshadeOn = document.getElementById('hillshadeOn').checked;
+    map.setStyle(buildStyle({stackBreak, hillshadeOn}));
+
+    // Re-apply current paint property overrides after style reload
+    map.once('styledata', () => {
+      const bm1 = document.getElementById('blendMode1').value;
+      const bm2 = document.getElementById('blendMode2').value;
+      const op1 = Number(document.getElementById('opacity1').value);
+      const op2 = Number(document.getElementById('opacity2').value);
+      if (map.getLayer('slope'))     map.setPaintProperty('slope',     'blend-mode', bm1);
+      if (map.getLayer('elevation')) map.setPaintProperty('elevation', 'blend-mode', bm2);
+      if (map.getLayer('slope'))     map.setPaintProperty('slope',     'terrain-analysis-opacity', op1);
+      if (map.getLayer('elevation')) map.setPaintProperty('elevation', 'terrain-analysis-opacity', op2);
+
+      const terrain3dOn = document.getElementById('terrain3d').checked;
+      if (terrain3dOn) {
+        map.setTerrain({source: 'dem', exaggeration: Number(document.getElementById('exag').value)});
+      }
+      updateStackDiagram();
+    });
+  }
+
+  document.getElementById('stackBreak').addEventListener('change', rebuildMap);
+  document.getElementById('hillshadeOn').addEventListener('change', rebuildMap);
+
+  document.getElementById('terrain3d').addEventListener('change', () => {
+    const on = document.getElementById('terrain3d').checked;
+    if (on) {
+      map.setTerrain({source: 'dem', exaggeration: Number(document.getElementById('exag').value)});
+    } else {
+      map.setTerrain(null);
+    }
+    updateStatusBar();
+    updateStackDiagram();
+  });
+
+  document.getElementById('exag').addEventListener('input', () => {
+    const v = Number(document.getElementById('exag').value);
+    document.getElementById('exagVal').textContent = v.toFixed(1) + '×';
+    if (document.getElementById('terrain3d').checked) {
+      map.setTerrain({source: 'dem', exaggeration: v});
+    }
+  });
+
+  document.getElementById('blendMode1').addEventListener('change', () => {
+    if (map.getLayer('slope')) map.setPaintProperty('slope', 'blend-mode', document.getElementById('blendMode1').value);
+    updateStackDiagram();
+  });
+
+  document.getElementById('blendMode2').addEventListener('change', () => {
+    if (map.getLayer('elevation')) map.setPaintProperty('elevation', 'blend-mode', document.getElementById('blendMode2').value);
+    updateStackDiagram();
+  });
+
+  document.getElementById('opacity1').addEventListener('input', () => {
+    const v = Number(document.getElementById('opacity1').value);
+    document.getElementById('opacityVal1').textContent = v.toFixed(2);
+    if (map.getLayer('slope')) map.setPaintProperty('slope', 'terrain-analysis-opacity', v);
+  });
+
+  document.getElementById('opacity2').addEventListener('input', () => {
+    const v = Number(document.getElementById('opacity2').value);
+    document.getElementById('opacityVal2').textContent = v.toFixed(2);
+    if (map.getLayer('elevation')) map.setPaintProperty('elevation', 'terrain-analysis-opacity', v);
+  });
+
+  map.on('load', () => {
+    updateStatusBar();
+    updateStackDiagram();
+  });
+</script>
+</body>
+</html>
