@@ -1,5 +1,6 @@
 ## main
 ### ✨ Features and improvements
+- Added `soft-multiply` blend mode for raster and terrain-analysis layers to compute less muddy multiply blends using "Modulate 2X".
 - _...Add new stuff here..._
 
 ### 🐞 Bug fixes

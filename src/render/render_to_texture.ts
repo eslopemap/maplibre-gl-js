@@ -166,7 +166,7 @@ export class RenderToTexture {
             // works correctly inside the FBO against that content — no override needed.
             if (type === 'terrain-analysis') {
                 const blendMode = (layer as any).paint.get('blend-mode');
-                if ((blendMode === 'multiply' || blendMode === 'screen') && currentStack.layers.length === 1) {
+                if ((blendMode === 'multiply' || blendMode === 'soft-multiply' || blendMode === 'screen') && currentStack.layers.length === 1) {
                     currentStack.blendMode = blendMode;
                 }
             }
@@ -237,6 +237,7 @@ export class RenderToTexture {
     private _getDrapeColorMode(stackInfo: {layers: Array<string>; blendMode?: string}): Readonly<ColorMode> | undefined {
         if (!stackInfo?.blendMode) return undefined;
         if (stackInfo.blendMode === 'multiply') return ColorMode.multiplyDrape;
+        if (stackInfo.blendMode === 'soft-multiply') return ColorMode.softMultiplyDrape;
         if (stackInfo.blendMode === 'screen') return ColorMode.screenDrape;
         return undefined;
     }

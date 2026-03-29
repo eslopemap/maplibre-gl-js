@@ -171,6 +171,14 @@ function getBlendModeState(painter: Painter, layer: RasterStyleLayer): RasterBle
         };
     }
 
+    if (blendMode === 'soft-multiply') {
+        return {
+            colorMode: ColorMode.softMultiply,
+            isPremultiplied: 0,
+            blendNeutral: 0.5
+        };
+    }
+
     if (blendMode === 'screen') {
         return {
             colorMode: ColorMode.screen,
