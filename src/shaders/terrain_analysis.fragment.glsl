@@ -30,14 +30,14 @@ float getDecodedElevation(vec2 coord) {
     return dot(data, u_unpack);
 }
 
-// Manually bilinearly filter the decoded elevation to avoid 8-bit hardware 
-// filtering precision errors on the encoded RGB values (which causes artifacts 
+// Manually bilinearly filter the decoded elevation to avoid 8-bit hardware
+// filtering precision errors on the encoded RGB values (which causes artifacts
 // at integer coordinate boundaries like 256m, 512m, 1024m).
 float getElevation(vec2 coord) {
     vec2 size = u_dimension;
     vec2 tc = coord * size - 0.5;
     vec2 f = fract(tc);
-    
+
     vec2 tc00 = (floor(tc) + 0.5) / size;
     vec2 epsilon = 1.0 / size;
 
@@ -150,9 +150,16 @@ void main() {
         }
     }
 
+    // The binary search above guarantees r - l == 1, so l maxes out at N-2.
+    // If scalar >= the last stop, promote l to r so the last color is reachable.
+    if (scalar >= scalar_r) {
+        l = r;
+        scalar_l = scalar_r;
+    }
+
     float x;
-    if (u_step_mode == 1) {
-        // Step mode: snap to the left stop's color (discrete bands)
+    if (u_step_mode == 1 || l == r) {
+        // Step mode or clamped to last stop: snap to exact texel
         x = (float(l) + 0.5) / float(u_color_ramp_size);
     } else {
         // Interpolate mode: blend between adjacent stops

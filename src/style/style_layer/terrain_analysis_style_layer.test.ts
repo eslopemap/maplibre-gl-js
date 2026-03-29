@@ -159,6 +159,64 @@ describe('TerrainAnalysisStyleLayer', () => {
         });
     });
 
+    describe('shader binary search last-stop regression', () => {
+        // Mirror the GLSL binary search from terrain_analysis.fragment.glsl
+        // to verify the last color stop is reachable (fix for missing last color).
+        function shaderBinarySearchIndex(scalar: number, scalarStops: number[], stepMode: boolean): number {
+            const N = scalarStops.length;
+            let r = N - 1;
+            let l = 0;
+            while (r - l > 1) {
+                const m = (r + l) >> 1;
+                if (scalar < scalarStops[m]) {
+                    r = m;
+                } else {
+                    l = m;
+                }
+            }
+            // Post-search promotion: make the last stop reachable
+            if (scalar >= scalarStops[r]) {
+                l = r;
+            }
+            if (stepMode || l === r) {
+                return l; // texel index sampled
+            }
+            // interpolate: l is the base, blends toward r
+            return l;
+        }
+
+        test('step mode: scalar beyond last stop selects last color', () => {
+            // Reproduces the slopedothtml ANALYSIS_COLOR.slope ramp (13 stops, last at 65°)
+            const stops = [0, 20, 24, 28, 31, 34, 37, 40, 43, 47, 52, 57, 65];
+            // Before fix: l maxed at 11 (index of 57). After fix: l = 12 (index of 65).
+            expect(shaderBinarySearchIndex(70, stops, true)).toBe(12);
+            expect(shaderBinarySearchIndex(65, stops, true)).toBe(12);
+            expect(shaderBinarySearchIndex(90, stops, true)).toBe(12);
+        });
+
+        test('step mode: scalar within range selects correct band', () => {
+            const stops = [0, 20, 24, 28, 31, 34, 37, 40, 43, 47, 52, 57, 65];
+            expect(shaderBinarySearchIndex(0, stops, true)).toBe(0);
+            expect(shaderBinarySearchIndex(10, stops, true)).toBe(0);
+            expect(shaderBinarySearchIndex(20, stops, true)).toBe(1);
+            expect(shaderBinarySearchIndex(35, stops, true)).toBe(5);
+            expect(shaderBinarySearchIndex(57, stops, true)).toBe(11);
+            expect(shaderBinarySearchIndex(64, stops, true)).toBe(11);
+        });
+
+        test('interpolate mode: scalar at/beyond last stop clamps to last index', () => {
+            const stops = [0, 30, 45];
+            expect(shaderBinarySearchIndex(45, stops, false)).toBe(2);
+            expect(shaderBinarySearchIndex(50, stops, false)).toBe(2);
+        });
+
+        test('two-stop ramp: last stop is reachable', () => {
+            const stops = [0, 45];
+            expect(shaderBinarySearchIndex(45, stops, true)).toBe(1);
+            expect(shaderBinarySearchIndex(90, stops, true)).toBe(1);
+        });
+    });
+
     describe('blend-mode paint property', () => {
         test('defaults to normal when not specified', () => {
             const layer = createStyleLayer(createTerrainAnalysisLayerSpec(), {});
