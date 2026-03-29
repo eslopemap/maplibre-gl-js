@@ -4,6 +4,7 @@ precision highp float;
 
 uniform sampler2D u_image;
 uniform vec4 u_unpack;
+uniform vec2 u_dimension;
 uniform sampler2D u_elevation_stops;
 uniform sampler2D u_color_stops;
 uniform int u_color_ramp_size;
@@ -11,11 +12,30 @@ uniform float u_opacity;
 
 in vec2 v_pos;
 
-float getElevation(vec2 coord) {
+float getDecodedElevation(vec2 coord) {
     // Convert encoded elevation value to meters
     vec4 data = texture(u_image, coord) * 255.0;
     data.a = -1.0;
     return dot(data, u_unpack);
+}
+
+float getElevation(vec2 coord) {
+    // Manually bilinearly filter the decoded elevation to avoid 8-bit precision errors
+    vec2 size = u_dimension;
+    vec2 tc = coord * size - 0.5;
+    vec2 f = fract(tc);
+
+    vec2 tc00 = (floor(tc) + 0.5) / size;
+    vec2 epsilon = 1.0 / size;
+
+    float h00 = getDecodedElevation(tc00);
+    float h10 = getDecodedElevation(tc00 + vec2(epsilon.x, 0.0));
+    float h01 = getDecodedElevation(tc00 + vec2(0.0, epsilon.y));
+    float h11 = getDecodedElevation(tc00 + vec2(epsilon.x, epsilon.y));
+
+    float h0 = mix(h00, h10, f.x);
+    float h1 = mix(h01, h11, f.x);
+    return mix(h0, h1, f.y);
 }
 
 float getElevationStop(int stop) {

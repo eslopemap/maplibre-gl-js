@@ -24,10 +24,31 @@ in vec2 v_pos;
 #define ATTR_SLOPE     1
 #define ATTR_ASPECT    2
 
-float getElevation(vec2 coord) {
+float getDecodedElevation(vec2 coord) {
     vec4 data = texture(u_image, coord) * 255.0;
     data.a = -1.0;
     return dot(data, u_unpack);
+}
+
+// Manually bilinearly filter the decoded elevation to avoid 8-bit hardware 
+// filtering precision errors on the encoded RGB values (which causes artifacts 
+// at integer coordinate boundaries like 256m, 512m, 1024m).
+float getElevation(vec2 coord) {
+    vec2 size = u_dimension;
+    vec2 tc = coord * size - 0.5;
+    vec2 f = fract(tc);
+    
+    vec2 tc00 = (floor(tc) + 0.5) / size;
+    vec2 epsilon = 1.0 / size;
+
+    float h00 = getDecodedElevation(tc00);
+    float h10 = getDecodedElevation(tc00 + vec2(epsilon.x, 0.0));
+    float h01 = getDecodedElevation(tc00 + vec2(0.0, epsilon.y));
+    float h11 = getDecodedElevation(tc00 + vec2(epsilon.x, epsilon.y));
+
+    float h0 = mix(h00, h10, f.x);
+    float h1 = mix(h01, h11, f.x);
+    return mix(h0, h1, f.y);
 }
 
 float getScalarStop(int stop) {
