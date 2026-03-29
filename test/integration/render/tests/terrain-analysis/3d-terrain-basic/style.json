@@ -35,9 +35,9 @@
       "type": "terrain-analysis",
       "source": "dem",
       "paint": {
-        "terrain-analysis-opacity": 0.8,
-        "terrain-analysis-attribute": "elevation",
-        "terrain-analysis-color": [
+        "opacity": 0.8,
+        "attribute": "elevation",
+        "color": [
           "interpolate",
           [
             "linear"

@@ -32,10 +32,10 @@
       "type": "terrain-analysis",
       "source": "dem",
       "paint": {
-        "terrain-analysis-opacity": 0.8,
-        "terrain-analysis-attribute": "elevation",
+        "opacity": 0.8,
+        "attribute": "elevation",
         "blend-mode": "screen",
-        "terrain-analysis-color": [
+        "color": [
           "interpolate",
           ["linear"],
           ["elevation"],

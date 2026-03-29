@@ -19,8 +19,8 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('sets isStepMode to false', () => {
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'slope',
-                    'terrain-analysis-color': [
+                    'attribute': 'slope',
+                    'color': [
                         'interpolate',
                         ['linear'],
                         ['slope'],
@@ -42,8 +42,8 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('sets isStepMode to true with correct stops', () => {
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'slope',
-                    'terrain-analysis-color': [
+                    'attribute': 'slope',
+                    'color': [
                         'step',
                         ['slope'],
                         'green',
@@ -64,8 +64,8 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('step colors are discrete (no blending)', () => {
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'slope',
-                    'terrain-analysis-color': [
+                    'attribute': 'slope',
+                    'color': [
                         'step',
                         ['slope'],
                         '#000000',
@@ -85,8 +85,8 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('step with elevation uses -500 as minimum', () => {
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'elevation',
-                    'terrain-analysis-color': [
+                    'attribute': 'elevation',
+                    'color': [
                         'step',
                         ['elevation'],
                         '#000000',
@@ -107,8 +107,8 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('step with aspect uses 0 as minimum', () => {
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'aspect',
-                    'terrain-analysis-color': [
+                    'attribute': 'aspect',
+                    'color': [
                         'step',
                         ['aspect'],
                         '#ff0000',
@@ -144,8 +144,8 @@ describe('TerrainAnalysisStyleLayer', () => {
             }
             const layerSpec = createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'slope',
-                    'terrain-analysis-color': stops
+                    'attribute': 'slope',
+                    'color': stops
                 }
             });
             const layer = createStyleLayer(layerSpec, {}) as TerrainAnalysisStyleLayer;
@@ -180,10 +180,10 @@ describe('TerrainAnalysisStyleLayer', () => {
         test('can be set alongside other terrain-analysis paint properties', () => {
             const layer = createStyleLayer(createTerrainAnalysisLayerSpec({
                 paint: {
-                    'terrain-analysis-attribute': 'slope',
-                    'terrain-analysis-opacity': 0.8,
+                    'attribute': 'slope',
+                    'opacity': 0.8,
                     'blend-mode': 'multiply',
-                    'terrain-analysis-color': [
+                    'color': [
                         'interpolate', ['linear'], ['slope'],
                         0, 'green', 45, 'red'
                     ]
@@ -193,7 +193,7 @@ describe('TerrainAnalysisStyleLayer', () => {
             expect(layer.getPaintProperty('blend-mode')).toEqual('multiply');
             layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
             expect(layer.paint.get('blend-mode')).toEqual('multiply');
-            expect(layer.paint.get('terrain-analysis-opacity')).toEqual(0.8);
+            expect(layer.paint.get('opacity')).toEqual(0.8);
         });
     });
 });

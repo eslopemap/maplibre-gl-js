@@ -24,9 +24,9 @@
       "type": "terrain-analysis",
       "source": "source",
       "paint": {
-        "terrain-analysis-opacity": 1,
-        "terrain-analysis-attribute": "elevation",
-        "terrain-analysis-color": [
+        "opacity": 1,
+        "attribute": "elevation",
+        "color": [
           "interpolate",
           ["linear"],
           ["elevation"],
