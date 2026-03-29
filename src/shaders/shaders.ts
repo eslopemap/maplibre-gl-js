@@ -18,8 +18,6 @@ import collisionBoxFrag from './collision_box.fragment.glsl.g';
 import collisionBoxVert from './collision_box.vertex.glsl.g';
 import collisionCircleFrag from './collision_circle.fragment.glsl.g';
 import collisionCircleVert from './collision_circle.vertex.glsl.g';
-import colorReliefFrag from './color_relief.fragment.glsl.g';
-import colorReliefVert from './color_relief.vertex.glsl.g';
 import terrainAnalysisFrag from './terrain_analysis.fragment.glsl.g';
 import terrainAnalysisVert from './terrain_analysis.vertex.glsl.g';
 import debugFrag from './debug.fragment.glsl.g';
@@ -93,7 +91,6 @@ export const shaders = {
     heatmapTexture: prepare(heatmapTextureFrag, heatmapTextureVert),
     collisionBox: prepare(collisionBoxFrag, collisionBoxVert),
     collisionCircle: prepare(collisionCircleFrag, collisionCircleVert),
-    colorRelief: prepare(colorReliefFrag, colorReliefVert),
     terrainAnalysis: prepare(terrainAnalysisFrag, terrainAnalysisVert),
     debug: prepare(debugFrag, debugVert),
     depth: prepare(clippingMaskFrag, depthVert),

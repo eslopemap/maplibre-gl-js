@@ -31,10 +31,10 @@
       "type": "terrain-analysis",
       "source": "source",
       "paint": {
-        "terrain-analysis-opacity": 0.7,
-        "terrain-analysis-attribute": "elevation",
+        "opacity": 0.7,
+        "attribute": "elevation",
         "blend-mode": "multiply",
-        "terrain-analysis-color": [
+        "color": [
           "interpolate",
           ["linear"],
           ["elevation"],

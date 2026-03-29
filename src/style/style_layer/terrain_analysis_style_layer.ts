@@ -34,19 +34,19 @@ export class TerrainAnalysisStyleLayer extends StyleLayer {
     constructor(layer: LayerSpecification, globalState: Record<string, any>, attributeOverride?: TerrainAnalysisAttribute) {
         super(layer, properties, globalState);
         this._attributeOverride = attributeOverride || null;
-        this._opacityProperty = 'terrain-analysis-opacity';
-        this._colorProperty = 'terrain-analysis-color';
+        this._opacityProperty = 'opacity';
+        this._colorProperty = 'color';
     }
 
     getAttributeType(): TerrainAnalysisAttribute {
         if (this._attributeOverride) {
             return this._attributeOverride;
         }
-        return this.paint.get('terrain-analysis-attribute');
+        return this.paint.get('attribute');
     }
 
     getOpacity(): number {
-        return this.paint.get('terrain-analysis-opacity');
+        return this.paint.get('opacity');
     }
 
     /**
@@ -167,9 +167,9 @@ export function createTerrainAnalysisFromColorRelief(layer: ColorReliefLayerSpec
         ...layer,
         type: 'terrain-analysis',
         paint: {
-            ...(srcPaint['color-relief-opacity'] !== undefined && {'terrain-analysis-opacity': srcPaint['color-relief-opacity']}),
-            ...(srcPaint['color-relief-color'] !== undefined && {'terrain-analysis-color': srcPaint['color-relief-color']}),
-            'terrain-analysis-attribute': 'elevation'
+            ...(srcPaint['color-relief-opacity'] !== undefined && {'opacity': srcPaint['color-relief-opacity']}),
+            ...(srcPaint['color-relief-color'] !== undefined && {'color': srcPaint['color-relief-color']}),
+            'attribute': 'elevation'
         }
     };
 
