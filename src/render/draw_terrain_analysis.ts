@@ -123,7 +123,7 @@ function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, r
     // The actual blend is applied at drape time via multiplyDrape/screenDrape.
     // When the stack has prior content (e.g. background), the blend works correctly
     // inside the FBO and rttDeferBlend is false.
-    if (rttDeferBlend && (blendMode === 'multiply' || blendMode === 'screen')) {
+    if (rttDeferBlend && (blendMode === 'multiply' || blendMode === 'soft-multiply' || blendMode === 'screen')) {
         return {
             colorMode: painter.colorModeForRenderPass(),
             isPremultiplied: 1,
@@ -136,6 +136,14 @@ function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, r
             colorMode: ColorMode.multiply,
             isPremultiplied: 0,
             blendNeutral: 1
+        };
+    }
+
+    if (blendMode === 'soft-multiply') {
+        return {
+            colorMode: ColorMode.softMultiply,
+            isPremultiplied: 0,
+            blendNeutral: 0.5
         };
     }
 
