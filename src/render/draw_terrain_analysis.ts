@@ -141,9 +141,9 @@ function getBlendModeState(painter: Painter, layer: TerrainAnalysisStyleLayer, r
 
     if (blendMode === 'soft-multiply') {
         return {
-            colorMode: ColorMode.softMultiply,
+            colorMode: ColorMode.multiply,
             isPremultiplied: 0,
-            blendNeutral: 0.5
+            blendNeutral: 2.0
         };
     }
 

@@ -170,7 +170,10 @@ void main() {
         // rampColor is already premultiplied: rgb = color * opacity, a = opacity
         fragColor = rampColor;
     } else {
-        fragColor = vec4(mix(vec3(u_blend_neutral), rampColor.rgb, rampColor.a), rampColor.a);
+        // u_blend_neutral > 1.5 signals soft-multiply: use α² curve with neutral=1.0
+        float neutral = min(u_blend_neutral, 1.0);
+        float effective_alpha = u_blend_neutral > 1.5 ? rampColor.a * rampColor.a : rampColor.a;
+        fragColor = vec4(mix(vec3(neutral), rampColor.rgb, effective_alpha), rampColor.a);
     }
 
 #ifdef OVERDRAW_INSPECTOR

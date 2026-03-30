@@ -173,9 +173,9 @@ function getBlendModeState(painter: Painter, layer: RasterStyleLayer): RasterBle
 
     if (blendMode === 'soft-multiply') {
         return {
-            colorMode: ColorMode.softMultiply,
+            colorMode: ColorMode.multiply,
             isPremultiplied: 0,
-            blendNeutral: 0.5
+            blendNeutral: 2.0
         };
     }
 

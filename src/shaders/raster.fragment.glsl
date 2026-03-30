@@ -51,7 +51,10 @@ void main() {
     if (u_is_premultiplied > 0.5) {
         fragColor = vec4(blendedRgb * color.a, color.a);
     } else {
-        fragColor = vec4(mix(vec3(u_blend_neutral), blendedRgb, color.a), color.a);
+        // u_blend_neutral > 1.5 signals soft-multiply: use α² curve with neutral=1.0
+        float neutral = min(u_blend_neutral, 1.0);
+        float effective_alpha = u_blend_neutral > 1.5 ? color.a * color.a : color.a;
+        fragColor = vec4(mix(vec3(neutral), blendedRgb, effective_alpha), color.a);
     }
 
 #ifdef OVERDRAW_INSPECTOR
