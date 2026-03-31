@@ -239,10 +239,11 @@ describe('render to texture', () => {
         rtt.renderLayer(fillLayer, renderOptions);
         rtt.renderLayer(terrainAnalysisLayer, renderOptions);
 
-        // Both layers should be in the same stack with multiply blend mode
+        // Both layers in the same stack — blend mode NOT tracked because
+        // terrain-analysis is not the first layer (blend works inside FBO against fill content)
         expect(rtt._stacks).toHaveLength(1);
         expect(rtt._stacks[0].layers).toEqual(['maine-fill', 'ta-slope']);
-        expect(rtt._stacks[0].blendMode).toBe('multiply');
+        expect(rtt._stacks[0].blendMode).toBeUndefined();
     });
 
     test('stack tracks blend mode from terrain-analysis layer with screen', () => {
@@ -329,9 +330,9 @@ describe('render to texture', () => {
         expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: 'multiply'})).toBe(ColorMode.multiplyDrape);
     });
 
-    test('_getDrapeColorMode returns undefined for screen (handled in FBO)', () => {
-        // Screen blend works correctly inside the FBO, so no drape override needed
-        expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: 'screen'})).toBeUndefined();
+    test('_getDrapeColorMode returns screenDrape for screen blend', () => {
+        // Screen blend against cleared FBO loses the effect, so defer to drape time
+        expect((rtt as any)._getDrapeColorMode({layers: ['a'], blendMode: 'screen'})).toBe(ColorMode.screenDrape);
     });
 
     test('_getDrapeColorMode returns undefined for normal/no blend', () => {
